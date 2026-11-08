@@ -1,0 +1,1425 @@
+# Maze Puzzle Game – Complete App Design & Build Prompt
+
+The design below is based on the gameplay concept of Maze: Puzzle and Relaxing Game, developed by Infinity Games.
+
+I've used the original game's main gameplay characteristics as the foundation, including:
+
+- Simple, relaxing maze-solving gameplay.
+- Swipe-controlled movement of a glowing player/light through a maze.
+- Multiple maze shapes, including square, circular, triangular and hexagonal.
+- Special-shaped mazes, such as animals and objects.
+- A progression system based around constellations and unlocking new levels.
+- Different gameplay modes, including timed challenges, restricted moves, collectibles and teleportation portals.
+- Visually attractive colours, animations and relaxing background music.
+
+The original game advertises thousands of mazes and more than 100 combinations of maze types, sizes and modes.&#x20;
+
+[image](https://www.google.com/s2/favicons?domain=https://play.google.com\&sz=32)
+
+Apps on Google Play+1
+
+
+
+One note about your video link: the supplied YouTube URL resolves to a video titled Maze: Path of Light, rather than the named game. I've used the named game's published gameplay description as the primary reference.&#x20;
+
+[image](https://www.google.com/s2/favicons?domain=https://www.youtube.com\&sz=32)
+
+YouTube+1
+
+
+
+The following is a comprehensive build prompt, incorporating your additional requirements for Firebase, user registration, email verification, password recovery and online leaderboards.
+
+# MASTER APP BUILD PROMPT
+
+## Maze – Puzzle & Relaxing Labyrinth Adventure
+
+### 1. PROJECT OVERVIEW
+
+Design and develop a complete, polished maze puzzle game inspired by the gameplay mechanics and progression systems of Maze: Puzzle and Relaxing Game by Infinity Games.
+
+The application should recreate the appeal of classic maze puzzles while providing a large collection of progressively challenging labyrinths, different maze geometries, special maze designs, additional game modes and a relaxing visual experience.
+
+The game should be easy to understand, enjoyable for casual players and increasingly challenging as players progress.
+
+**Core objectives:**
+
+- Deliver an enjoyable, relaxing maze-solving experience.
+- Provide thousands of playable maze puzzles.
+- Include multiple maze shapes, sizes and difficulty levels.
+- Introduce a constellation-based level progression system.
+- Provide several alternative gameplay modes.
+- Include Firebase user authentication.
+- Store puzzles, user progress and leaderboard information in Firebase.
+- Allow players to compete through global and weekly leaderboards.
+- Provide an administrator interface for managing puzzles and game content.
+
+Create an original game identity, original artwork, original maze designs and original interface assets. Reproduce the gameplay principles rather than copying copyrighted assets, branding or proprietary level content.
+
+---
+
+# 2. GAME DESIGN AND VISUAL STYLE
+
+### Overall appearance
+
+Create a minimalist, modern, visually attractive puzzle game with a relaxing atmosphere.
+
+The interface should feel:
+
+- Clean and uncluttered.
+- Colourful without being overwhelming.
+- Smooth and responsive.
+- Easy to navigate.
+- Visually immersive.
+- Suitable for extended casual gameplay.
+
+Use a dark or atmospheric background with luminous maze walls, glowing paths and subtle animated effects.
+
+### Visual design elements
+
+- Glowing player character or light indicator.
+- Clearly visible maze walls.
+- Contrasting maze pathways.
+- Animated exit points.
+- Subtle particle effects.
+- Smooth movement animations.
+- Gentle screen transitions.
+- Relaxing background music.
+- Optional vibration and sound effects.
+
+Use a consistent design language across all game screens.
+
+### Colour themes
+
+Provide multiple visual themes that can be unlocked through progression.
+
+Examples:
+
+- Midnight Blue.
+- Aurora Green.
+- Cosmic Purple.
+- Sunset Orange.
+- Ice Blue.
+- Emerald Forest.
+- Galaxy.
+- Monochrome.
+
+Players should be able to change their active theme from the settings screen.
+
+---
+
+# 3. CORE MAZE GAMEPLAY
+
+### Basic gameplay
+
+The player must navigate a maze from its starting position to the designated exit.
+
+The player is represented by a glowing dot, light or small animated character.
+
+**Movement controls:**
+
+- Swipe up, down, left and right to control movement.
+- Support touch and mouse controls where appropriate.
+- Movement should follow valid maze pathways.
+- Prevent movement through walls.
+- Provide smooth movement animations.
+- Allow the player to retrace their route.
+- Provide an optional restart button.
+- Provide an optional pause button.
+
+Movement should feel responsive and intuitive.
+
+### Movement options
+
+Provide two movement configurations:
+
+1. **Continuous Movement:** The player moves in the selected direction until reaching a wall, junction or destination.
+2. **Step-by-Step Movement:** Each swipe or directional input moves the player one maze cell.
+
+Allow players to select their preferred control style.
+
+### Maze completion
+
+A level is completed when the player reaches the designated exit.
+
+On completion:
+
+- Play a subtle completion animation.
+- Display a level completed notification.
+- Award the appropriate points.
+- Record the completion time.
+- Record the number of moves.
+- Update the player's progression.
+- Unlock the next level where applicable.
+- Update leaderboard statistics.
+
+Display a results screen with:
+
+- Level number.
+- Maze type.
+- Difficulty.
+- Completion time.
+- Number of moves.
+- Stars awarded.
+- Points earned.
+- Personal best indicator.
+
+Provide buttons for Next Level, Replay and Return to Map.
+
+---
+
+# 4. MAZE GENERATION AND DESIGN SYSTEM
+
+Build a dedicated maze generation engine capable of creating thousands of unique, solvable maze puzzles.
+
+Every generated maze must have:
+
+- A valid starting position.
+- A valid exit position.
+- Connected pathways.
+- No impossible or inaccessible sections.
+- A guaranteed solution.
+- An associated difficulty rating.
+- A unique puzzle identifier.
+
+Use deterministic maze generation with stored seeds so that the same puzzle can always be reproduced.
+
+### Maze shapes
+
+Support the following maze geometries:
+
+**1. Square Mazes**
+
+- Traditional rectangular mazes.
+- Square grid mazes.
+- Wide and narrow layouts.
+- Increasing grid sizes.
+
+**2. Circular Mazes**
+
+- Concentric circular pathways.
+- Multiple rings.
+- Radial connections.
+- Central and outer exits.
+
+**3. Triangular Mazes**
+
+- Triangular grid structures.
+- Multiple directional pathways.
+- Increasingly complex layouts.
+
+**4. Hexagonal Mazes**
+
+- Hexagonal cell structures.
+- Six-direction movement.
+- Multiple interconnected pathways.
+
+**5. Special-Shaped Mazes**
+
+Create mazes whose overall boundaries form recognisable silhouettes.
+
+Examples:
+
+- Rabbit.
+- Cat.
+- Dog.
+- Tree.
+- Guitar.
+- Heart.
+- Star.
+- Butterfly.
+- Flower.
+- Diamond.
+
+The maze pathways must remain playable within the chosen shape.
+
+\<Add support for future custom maze shapes through the administration system.>
+
+### Maze dimensions
+
+Provide multiple maze sizes.
+
+Suggested progression:
+
+| Difficulty | Grid size |
+| ---------- | --------- |
+| Very Easy  | 5 × 5     |
+| Easy       | 8 × 8     |
+| Normal     | 12 × 12   |
+| Medium     | 16 × 16   |
+| Hard       | 20 × 20   |
+| Very Hard  | 25 × 25   |
+| Expert     | 30 × 30   |
+| Master     | 40 × 40   |
+
+These dimensions are suggested starting configurations. Adapt the generation engine for circular, triangular, hexagonal and irregular maze geometries.
+
+### Maze generation algorithms
+
+Implement suitable algorithms, including:
+
+- Recursive Backtracking.
+- Prim's Algorithm.
+- Kruskal's Algorithm.
+- Randomised Depth-First Search.
+- Custom algorithms for non-square geometries.
+
+The system must validate every generated maze before publishing it.
+
+Include configurable difficulty controls based on:
+
+- Maze size.
+- Number of junctions.
+- Dead ends.
+- Path complexity.
+- Shortest solution length.
+- Number of alternative routes.
+- Special mechanics.
+
+---
+
+# 5. GAME MODES
+
+Create seven distinct game modes.
+
+### Mode 1 – Classic Maze
+
+The main game mode.
+
+- Navigate from start to finish.
+- No time restrictions.
+- No movement restrictions.
+- Gradually increasing difficulty.
+- Multiple maze geometries.
+- Progressive level unlocking.
+
+This should be the main progression experience.
+
+### Mode 2 – Time Challenge
+
+Complete the maze within a specified time limit.
+
+- Different time limits depending on difficulty.
+- Countdown display.
+- Optional timer warning.
+- Time-based scoring.
+- Personal best records.
+- Time Challenge leaderboard.
+
+Award additional points for faster completion.
+
+### Mode 3 – Restricted Moves
+
+Complete the maze using a limited number of movements.
+
+- Each valid movement consumes a move.
+- Display remaining moves.
+- Allow players to plan their route.
+- Exceeding the movement allowance results in failure.
+- Provide an option to restart.
+
+Create progressively tighter movement allowances.
+
+### Mode 4 – Token Collection
+
+Collect all designated tokens before reaching the exit.
+
+- Place collectible objects throughout the maze.
+- Display the number of remaining tokens.
+- Some tokens should require exploring alternative routes.
+- All required tokens must be collected before the exit becomes active.
+- Award bonus points for collecting every token.
+
+Introduce different collectible designs and visual themes.
+
+### Mode 5 – Intertwined Mazes
+
+Introduce multiple interconnected maze sections.
+
+- Two or more separate maze structures.
+- Each maze has its own pathways.
+- Teleportation portals connect designated locations.
+- Players must identify which portal leads to the correct section.
+- Some portals should provide alternative routes.
+- Some should require additional exploration.
+
+Display portal locations clearly while retaining the puzzle challenge.
+
+### Mode 6 – Hidden Maze
+
+An additional original gameplay mode.
+
+- The maze begins partially or completely hidden.
+- The player explores to reveal surrounding pathways.
+- Previously explored sections remain visible.
+- The exit is initially concealed.
+- Include optional hints.
+
+This mode should reward exploration and memory.
+
+### Mode 7 – Mirror Maze
+
+An additional original gameplay mode.
+
+- Introduce mirrored or rotated maze sections.
+- Movement through certain gateways transfers the player into a mirrored section.
+- Some pathways correspond to different positions in another maze.
+- Players must understand the relationship between connected sections.
+
+Include increasingly challenging configurations.
+
+---
+
+# 6. CONSTELLATION PROGRESSION SYSTEM
+
+Create an attractive constellation-based progression map.
+
+This should be one of the main features of the game.
+
+Players progress through a collection of themed constellations by completing individual maze puzzles.
+
+### Constellation structure
+
+Each constellation contains multiple stars.
+
+Each star represents an individual maze level.
+
+Suggested structure:
+
+- 10 constellations in the initial release.
+- 20 levels per constellation.
+- 200 initial levels.
+- Expandable to thousands of levels.
+
+The administrator must be able to add further constellations and levels without modifying the application code.
+
+### Progression mechanics
+
+- Players begin with the first constellation unlocked.
+- Completing a level activates its corresponding star.
+- Completing required stars unlocks subsequent levels.
+- Completing all stars unlocks the next constellation.
+- Display the percentage completed.
+- Display locked and unlocked constellations.
+- Save individual level progress.
+
+### Constellation completion animation
+
+When a constellation is completed:
+
+- Animate the collected stars.
+- Connect the stars with glowing lines.
+- Reveal the completed constellation illustration.
+- Display a completion message.
+- Award a constellation completion bonus.
+- Unlock the next constellation.
+
+### Example constellation themes
+
+1. The Little Dipper.
+2. Orion.
+3. The Great Bear.
+4. Cassiopeia.
+5. Pegasus.
+6. Andromeda.
+7. The Dragon.
+8. The Swan.
+9. The Phoenix.
+10. The Galaxy.
+
+Use original constellation-inspired artwork.
+
+---
+
+# 7. LEVEL PROGRESSION AND DIFFICULTY
+
+Create a structured progression system.
+
+Every level should contain:
+
+- Unique level ID.
+- Constellation ID.
+- Level number.
+- Maze geometry.
+- Maze dimensions.
+- Difficulty.
+- Gameplay mode.
+- Maze generation seed.
+- Starting coordinates.
+- Exit coordinates.
+- Special mechanics.
+- Token locations, if applicable.
+- Time limit, if applicable.
+- Movement allowance, if applicable.
+- Base points.
+- Completion requirements.
+
+### Star rating system
+
+Award between one and three stars for completed levels.
+
+Suggested scoring:
+
+- 1 Star: Complete the maze.
+- 2 Stars: Complete within the target time or movement allowance.
+- 3 Stars: Complete while meeting the highest performance target.
+
+Classic mode should award stars based on configurable performance thresholds.
+
+Players should be able to replay previously completed levels to improve their star ratings and personal bests.
+
+---
+
+# 8. SCORING AND REWARDS
+
+Create a centralised scoring system.
+
+Award points based on:
+
+- Successful level completion.
+- Maze difficulty.
+- Completion time.
+- Number of moves.
+- Token collection.
+- Special objectives.
+- Perfect completion.
+- Constellation completion.
+
+Suggested base scoring:
+
+| Difficulty | Base points |
+| ---------- | ----------- |
+| Very Easy  | 10          |
+| Easy       | 20          |
+| Normal     | 35          |
+| Medium     | 50          |
+| Hard       | 75          |
+| Very Hard  | 100         |
+| Expert     | 150         |
+| Master     | 200         |
+
+Introduce configurable bonus multipliers for:
+
+- Faster completion.
+- Fewer moves.
+- All tokens collected.
+- Three-star completion.
+- Consecutive daily challenges.
+
+Avoid awarding duplicate leaderboard points for repeatedly replaying the same puzzle unless the player improves their qualifying result.
+
+Store all scoring events with their associated puzzle and user IDs.
+
+---
+
+# 9. DAILY AND WEEKLY CHALLENGES
+
+Create additional challenges to encourage regular gameplay.
+
+### Daily Maze
+
+- One new daily puzzle.
+- The same puzzle for all players.
+- One official leaderboard entry per player.
+- Completion time recorded.
+- Daily ranking calculated.
+- Previous daily challenges accessible through an archive.
+
+### Weekly Maze Challenge
+
+- One specially designed weekly maze.
+- More challenging than standard daily puzzles.
+- Weekly leaderboard.
+- Weekly completion statistics.
+- Special weekly achievement rewards.
+
+### Challenge rewards
+
+Provide:
+
+- Bonus points.
+- Achievement badges.
+- Unlockable visual themes.
+- Player profile rewards.
+
+The administrator must be able to schedule daily and weekly puzzles in advance.
+
+Use Firebase server timestamps and a consistent UTC-based challenge schedule, displaying dates in the player's local timezone.
+
+---
+
+# 10. FIREBASE BACKEND ARCHITECTURE
+
+Use Firebase as the central backend for authentication, puzzle management, player progression and leaderboard storage.
+
+The application must be designed around a scalable Firebase architecture.
+
+### Required Firebase services
+
+**1. Firebase Authentication**
+
+Handle user registration, sign-in, verification and account recovery.
+
+**2. Cloud Firestore**
+
+Store:
+
+- Puzzle information.
+- Maze configurations.
+- Constellations.
+- User profiles.
+- User progression.
+- Completion records.
+- Leaderboards.
+- Daily challenges.
+- Weekly challenges.
+- Achievements.
+- Game settings.
+- Administrative information.
+
+**3. Cloud Functions for Firebase**
+
+Handle:
+
+- Secure score validation.
+- Leaderboard updates.
+- Daily and weekly challenge generation.
+- Scheduled leaderboard resets.
+- Achievement calculations.
+- Account-related server operations.
+- Anti-cheat validation.
+
+**4. Firebase App Check**
+
+Protect backend services against unauthorised clients.
+
+**5. Firebase Hosting**
+
+Host an administration dashboard or web-based management interface if required.
+
+**6. Firebase Storage**
+
+Store:
+
+- Constellation artwork.
+- Maze illustrations.
+- Theme assets.
+- Achievement icons.
+- Sound effects.
+- Background music.
+
+---
+
+# 11. USER REGISTRATION AND AUTHENTICATION
+
+Implement Email and Password authentication using Firebase Authentication.
+
+All users must have an individual account to participate in global leaderboards and synchronise progression across devices.
+
+### Registration screen
+
+Required fields:
+
+- Display name.
+- Email address.
+- Password.
+- Confirm password.
+
+Registration process:
+
+1. Validate all registration fields.
+2. Check password requirements.
+3. Create the Firebase Authentication account.
+4. Create the initial Firestore user profile.
+5. Send an email verification message.
+6. Display an email verification instruction screen.
+7. Require email verification before enabling competitive online features.
+
+Provide an option to resend the verification email.
+
+### Login screen
+
+Required fields:
+
+- Email address.
+- Password.
+
+Include:
+
+- Sign In button.
+- Remember Me option.
+- Forgot Password link.
+- Create Account link.
+
+Validate credentials through Firebase Authentication.
+
+### Email verification
+
+Implement Firebase email verification.
+
+- Send verification emails during registration.
+- Display verification status.
+- Provide a resend verification option.
+- Refresh authentication status when the user returns to the application.
+- Restrict leaderboard submissions until verification is complete.
+
+### Password reset
+
+Provide a Forgot Password workflow.
+
+1. User enters their registered email address.
+2. Firebase sends a password reset email.
+3. Display confirmation instructions.
+4. Allow the user to return to the login screen.
+5. Provide appropriate error messages for invalid requests.
+
+### Account management
+
+Include:
+
+- Change display name.
+- Change password.
+- Change email address using Firebase's secure verification process.
+- Sign out.
+- Delete account.
+- Request account data deletion.
+
+Ensure account deletion also triggers the appropriate deletion or anonymisation of associated Firestore user data, subject to the application's data-retention policy.
+
+### Guest mode
+
+Allow players to explore a limited selection of puzzles without registering.
+
+Guest users:
+
+- Can play selected Classic levels.
+- Can practise maze controls.
+- Can view basic game settings.
+- Cannot submit global leaderboard scores.
+- Can create an account to synchronise progression.
+
+If a guest registers, offer to migrate eligible local progress to their new account.
+
+---
+
+# 12. FIRESTORE DATABASE STRUCTURE
+
+Use a structured and scalable Firestore database.
+
+Recommended collection structure:
+
+### users
+
+Document ID: Firebase Authentication UID.
+
+Fields:
+
+- uid
+- displayName
+- email
+- emailVerified
+- profileImage
+- totalPoints
+- totalLevelsCompleted
+- totalStars
+- totalPlayTime
+- currentConstellation
+- currentLevel
+- registrationDate
+- lastLogin
+- accountStatus
+- selectedTheme
+- createdAt
+- updatedAt
+
+### puzzles
+
+Document ID: Unique puzzle ID.
+
+Fields:
+
+- puzzleId
+- constellationId
+- levelNumber
+- puzzleName
+- mazeType
+- mazeShape
+- gridWidth
+- gridHeight
+- difficulty
+- gameMode
+- generationAlgorithm
+- generationSeed
+- mazeData
+- startPosition
+- exitPosition
+- collectibleLocations
+- portalLocations
+- timeLimit
+- moveLimit
+- basePoints
+- isPublished
+- isActive
+- createdAt
+- updatedAt
+
+Store large maze configurations in a compact, efficient representation rather than unnecessary nested documents.
+
+### constellations
+
+Fields:
+
+- constellationId
+- constellationName
+- description
+- artworkURL
+- orderIndex
+- totalLevels
+- unlockRequirements
+- isActive
+
+### userProgress
+
+Document structure: users/{uid}/progress/{puzzleId}
+
+Fields:
+
+- puzzleId
+- completed
+- bestTime
+- bestMoveCount
+- starsAwarded
+- pointsEarned
+- completionCount
+- firstCompletedAt
+- lastPlayedAt
+- unlocked
+
+### leaderboardScores
+
+Fields:
+
+- scoreId
+- userId
+- displayNameSnapshot
+- puzzleId
+- challengeId
+- gameMode
+- completionTime
+- moveCount
+- points
+- stars
+- submittedAt
+- validationStatus
+
+### dailyChallenges
+
+Fields:
+
+- challengeId
+- challengeDate
+- puzzleId
+- startTime
+- endTime
+- difficulty
+- isActive
+
+### weeklyChallenges
+
+Fields:
+
+- challengeId
+- weekIdentifier
+- puzzleId
+- startTime
+- endTime
+- difficulty
+- isActive
+
+### achievements
+
+Fields:
+
+- achievementId
+- achievementName
+- description
+- achievementIcon
+- requirementType
+- requirementValue
+- rewardPoints
+- isActive
+
+### userAchievements
+
+Fields:
+
+- userId
+- achievementId
+- unlockedAt
+- rewardClaimed
+
+### gameSettings
+
+Fields:
+
+- settingId
+- backgroundMusicEnabled
+- soundEffectsEnabled
+- vibrationEnabled
+- movementMode
+- selectedTheme
+- animationSettings
+
+### leaderboardPeriods
+
+Fields:
+
+- periodId
+- leaderboardType
+- startDate
+- endDate
+- status
+- lastUpdated
+
+Create appropriate composite indexes for leaderboard queries and frequently used filters.
+
+---
+
+# 13. GLOBAL LEADERBOARDS
+
+Create a comprehensive online leaderboard system using Firebase.
+
+### Leaderboard categories
+
+1. All-Time Global Leaderboard.
+2. Weekly Global Leaderboard.
+3. Daily Challenge Leaderboard.
+4. Weekly Challenge Leaderboard.
+5. Classic Maze Leaderboard.
+6. Time Challenge Leaderboard.
+7. Restricted Moves Leaderboard.
+8. Total Stars Leaderboard.
+
+### Leaderboard display
+
+Display:
+
+- Position.
+- Player display name.
+- Player avatar.
+- Total qualifying points.
+- Completed puzzles.
+- Best completion time where relevant.
+
+Highlight the currently signed-in player.
+
+Provide:
+
+- Top 10.
+- Top 50.
+- Top 100.
+- Search player.
+- My Position.
+
+### Leaderboard calculations
+
+Use server-side calculations for competitive scores.
+
+- Do not trust client-submitted point totals.
+- Validate puzzle completion against the stored maze configuration.
+- Check the submitted route or equivalent completion evidence.
+- Validate completion time and movement count.
+- Reject impossible or manipulated results.
+- Prevent duplicate challenge submissions.
+- Apply rate limiting.
+- Record validation status.
+
+Use Cloud Functions for score validation and leaderboard updates.
+
+Use Firestore aggregation or materialised leaderboard documents where appropriate to maintain performance.
+
+### Weekly leaderboard reset
+
+Automatically reset weekly competition standings at the configured weekly boundary.
+
+Preserve historical leaderboard results so players can review previous weeks.
+
+Do not delete historical scores when resetting the active leaderboard.
+
+---
+
+# 14. PLAYER PROFILE AND STATISTICS
+
+Create a dedicated player profile screen.
+
+Display:
+
+- Display name.
+- Avatar.
+- Registration date.
+- Global ranking.
+- Total points.
+- Total levels completed.
+- Total stars collected.
+- Total playtime.
+- Best completion times.
+- Current constellation.
+- Achievements.
+
+### Player statistics
+
+Include:
+
+- Levels completed by difficulty.
+- Levels completed by maze shape.
+- Levels completed by game mode.
+- Average completion time.
+- Average moves per level.
+- Total perfect completions.
+- Daily challenge participation.
+- Weekly challenge participation.
+
+Use attractive charts and progress indicators.
+
+---
+
+# 15. ACHIEVEMENTS AND REWARDS
+
+Create an achievement system to encourage progression.
+
+Suggested achievements:
+
+**Progression**
+
+- First Steps – Complete your first maze.
+- Maze Explorer – Complete 25 mazes.
+- Labyrinth Expert – Complete 100 mazes.
+- Maze Master – Complete 500 mazes.
+
+**Performance**
+
+- Speed Runner – Complete a maze within the target time.
+- Perfect Route – Complete a maze using the minimum number of moves.
+- Three-Star Collector – Earn 50 three-star ratings.
+
+**Exploration**
+
+- Shape Explorer – Complete every maze geometry.
+- Portal Traveller – Complete 25 intertwined mazes.
+- Treasure Hunter – Collect 100 tokens.
+
+**Competition**
+
+- Daily Challenger – Complete 7 daily challenges.
+- Weekly Champion – Finish first in a weekly challenge.
+- Top 10 Player – Reach the global top 10.
+
+Achievements should automatically unlock when their conditions are met.
+
+---
+
+# 16. ADMINISTRATION DASHBOARD
+
+Create a secure administrator interface for managing the complete game.
+
+Only authorised administrator accounts should have access.
+
+Use Firebase Authentication with custom claims for administrator permissions. Never rely on a client-side admin toggle.
+
+### Admin dashboard
+
+Display:
+
+- Total registered players.
+- Verified accounts.
+- Total puzzles.
+- Published puzzles.
+- Total completed levels.
+- Daily active players.
+- Weekly active players.
+- Leaderboard activity.
+
+### Puzzle management
+
+Administrators must be able to:
+
+- Create new puzzles.
+- Edit existing puzzles.
+- Delete or archive puzzles.
+- Generate random mazes.
+- Select maze geometry.
+- Select maze dimensions.
+- Set difficulty.
+- Select gameplay mode.
+- Configure time limits.
+- Configure move limits.
+- Place collectibles.
+- Configure teleportation portals.
+- Preview puzzles.
+- Test maze solvability.
+- Publish or unpublish puzzles.
+
+### Bulk puzzle management
+
+Provide options to:
+
+- Import puzzle collections using JSON.
+- Export puzzle collections.
+- Bulk publish puzzles.
+- Bulk edit difficulty.
+- Assign puzzles to constellations.
+- Schedule daily challenges.
+- Schedule weekly challenges.
+
+### Leaderboard management
+
+Administrators can:
+
+- View leaderboard results.
+- Investigate suspicious scores.
+- Flag invalid results.
+- Remove confirmed fraudulent entries.
+- Review historical competitions.
+- Reset an active competition when necessary.
+
+All administrative actions must be recorded in an audit log.
+
+---
+
+# 17. APPLICATION SCREENS AND NAVIGATION
+
+Build the following screens.
+
+| Screen             | Main functionality          |
+| ------------------ | --------------------------- |
+| Splash Screen      | Game logo and loading       |
+| Welcome Screen     | Sign in or guest play       |
+| Registration       | Create account              |
+| Email Verification | Verify registered email     |
+| Login              | Email and password          |
+| Password Recovery  | Reset password              |
+| Home Screen        | Main game navigation        |
+| Constellation Map  | Select progression areas    |
+| Level Selection    | Browse individual puzzles   |
+| Game Screen        | Play maze puzzles           |
+| Pause Screen       | Resume, restart or exit     |
+| Results Screen     | Completion statistics       |
+| Daily Challenge    | Daily maze                  |
+| Weekly Challenge   | Weekly maze                 |
+| Leaderboards       | Competitive rankings        |
+| Player Profile     | Personal statistics         |
+| Achievements       | Rewards and milestones      |
+| Settings           | Gameplay and sound settings |
+| Account Management | Account information         |
+
+### Home screen layout
+
+Include the following main navigation options:
+
+- Continue Playing.
+- Constellations.
+- Daily Challenge.
+- Weekly Challenge.
+- Leaderboards.
+- Achievements.
+- Profile.
+- Settings.
+
+Display the player's current progression prominently.
+
+### Game screen layout
+
+The maze should be the main focus of the screen.
+
+Suggested layout:
+
+Top section:
+
+- Back/pause control.
+- Level number.
+- Difficulty indicator.
+- Timer or remaining moves where applicable.
+
+Main section:
+
+- Centred maze.
+- Clearly visible start point.
+- Glowing player indicator.
+- Exit marker.
+- Collectibles and portals where required.
+
+Bottom section:
+
+- Restart.
+- Hint.
+- Optional control instructions.
+
+Allow the maze to scale appropriately to the available screen size without compromising pathway visibility.
+
+---
+
+# 18. SOUND AND ANIMATIONS
+
+Create a relaxing audiovisual experience.
+
+### Sound effects
+
+- Player movement.
+- Reaching a junction.
+- Collecting a token.
+- Entering a portal.
+- Completing a maze.
+- Unlocking a constellation.
+- Earning an achievement.
+
+### Background music
+
+Provide a selection of relaxing instrumental background tracks.
+
+Include:
+
+- Music on/off.
+- Sound effects on/off.
+- Independent volume controls.
+
+All audio must be original or appropriately licensed.
+
+### Animations
+
+- Smooth player movement.
+- Glowing maze pathways.
+- Animated exit markers.
+- Portal activation.
+- Collectible animations.
+- Level completion effects.
+- Constellation star connections.
+- Achievement unlock animations.
+
+Allow reduced animations through accessibility settings.
+
+---
+
+# 19. OFFLINE GAMEPLAY AND DATA SYNCHRONISATION
+
+Support offline gameplay for previously downloaded puzzles.
+
+- Cache published puzzle data locally.
+- Save temporary gameplay progress locally.
+- Allow players to continue previously downloaded Classic puzzles.
+- Synchronise completed levels when internet connectivity returns.
+- Resolve progression conflicts safely.
+- Never submit unverified offline competitive scores directly to leaderboards.
+- Require server validation before accepting competitive results.
+
+Display clear online/offline status.
+
+---
+
+# 20. SECURITY AND FIREBASE RULES
+
+Implement secure Firebase Firestore and Storage security rules.
+
+Requirements:
+
+- Users can read and update permitted fields in their own profile.
+- Users cannot modify their own leaderboard ranking.
+- Users cannot directly award themselves points.
+- Users cannot alter puzzle configurations.
+- Users cannot modify another player's progress.
+- Users cannot access administrative functions without verified admin claims.
+- Published puzzles can be read by authorised game clients.
+- Only authorised administrators can create and publish puzzles.
+- Leaderboard updates must be processed through trusted Cloud Functions.
+- Validate user ownership and authentication on all sensitive operations.
+
+Use Firebase App Check and appropriate authentication controls.
+
+Do not embed Firebase service account credentials, private API keys or administrative secrets in the application.
+
+Implement appropriate data retention and privacy controls.
+
+---
+
+# 21. PERFORMANCE AND SCALABILITY
+
+The game must remain responsive as the number of puzzles and registered users increases.
+
+Requirements:
+
+- Efficient maze rendering.
+- Smooth movement at supported frame rates.
+- Optimised Firestore reads and writes.
+- Local caching of puzzle data.
+- Pagination for leaderboard results.
+- Avoid unnecessary database polling.
+- Use real-time listeners selectively.
+- Use batch operations where appropriate.
+- Avoid loading entire puzzle collections at once.
+- Optimise image and audio assets.
+- Support future expansion without major architectural changes.
+
+Separate the maze generation engine, gameplay engine, Firebase services, authentication and user interface into independent modules.
+
+---
+
+# 22. INITIAL CONTENT REQUIREMENTS
+
+The initial release should contain a substantial collection of playable content.
+
+Suggested launch configuration:
+
+| Content                  | Initial quantity |
+| ------------------------ | ---------------- |
+| Constellations           | 10               |
+| Levels per constellation | 20               |
+| Total standard levels    | 200              |
+| Maze geometries          | 4                |
+| Special maze shapes      | 10               |
+| Gameplay modes           | 7                |
+| Visual themes            | 8                |
+| Difficulty levels        | 8                |
+
+Include a combination of hand-designed puzzles and algorithmically generated puzzles.
+
+Every published puzzle must be tested for solvability, valid start and exit positions, and appropriate difficulty.
+
+The content system must support future expansion to 1,000, 5,000 or more puzzles.
+
+---
+
+# 23. DEVELOPMENT AND IMPLEMENTATION REQUIREMENTS
+
+Build the application as a complete working game, not simply a collection of interface mock-ups.
+
+Recommended architecture:
+
+- Cross-platform application framework.
+- Dedicated maze rendering and movement engine.
+- Firebase Authentication.
+- Cloud Firestore.
+- Cloud Functions.
+- Firebase Storage.
+- Firebase App Check.
+- Local persistent caching.
+
+Use a modular, maintainable codebase.
+
+### Required implementation sequence
+
+**Phase 1 – Core Game**
+
+- Create the main interface.
+- Implement maze generation.
+- Implement player movement.
+- Implement maze collision detection.
+- Implement exit detection.
+- Implement completion scoring.
+
+**Phase 2 – Maze Content**
+
+- Implement all maze geometries.
+- Implement difficulty levels.
+- Implement special-shaped mazes.
+- Implement all seven game modes.
+- Create the initial 200 puzzles.
+
+**Phase 3 – Progression**
+
+- Implement constellations.
+- Implement star collection.
+- Implement level unlocking.
+- Implement achievements.
+- Implement visual rewards.
+
+**Phase 4 – Firebase**
+
+- Configure Firebase.
+- Implement email/password registration.
+- Implement email verification.
+- Implement login and logout.
+- Implement password recovery.
+- Create Firestore database collections.
+- Implement user progression synchronisation.
+
+**Phase 5 – Competition**
+
+- Implement global leaderboards.
+- Implement daily challenges.
+- Implement weekly challenges.
+- Implement secure score validation.
+- Implement historical leaderboard records.
+
+**Phase 6 – Administration**
+
+- Build the administrator dashboard.
+- Implement puzzle management.
+- Implement bulk JSON imports.
+- Implement leaderboard management.
+- Implement administrative audit logging.
+
+**Phase 7 – Testing and Optimisation**
+
+- Test all maze geometries.
+- Test every gameplay mode.
+- Test puzzle solvability.
+- Test account registration and verification.
+- Test password recovery.
+- Test database security rules.
+- Test leaderboard calculations.
+- Test offline synchronisation.
+- Test performance with large puzzle collections.
+
+---
+
+# 24. FINAL ACCEPTANCE CRITERIA
+
+The completed application must satisfy the following requirements:
+
+1. Players can register using an email address and password.
+2. Email verification works correctly.
+3. Password reset works correctly.
+4. Players can sign in and sign out.
+5. Guest gameplay is available.
+6. Multiple maze geometries are supported.
+7. Special-shaped mazes are supported.
+8. Seven playable game modes are implemented.
+9. Maze puzzles are guaranteed to be solvable.
+10. The constellation progression system works.
+11. Player progress is saved in Firebase.
+12. Progress synchronises between devices.
+13. Global leaderboards display verified results.
+14. Daily and weekly challenges operate correctly.
+15. Achievements unlock automatically.
+16. Administrators can create and manage puzzles.
+17. Administrators can import and export puzzle collections.
+18. Firestore security rules protect user and game data.
+19. Offline puzzle gameplay is supported.
+20. The application can expand to thousands of puzzles without requiring architectural redevelopment.
+
+**FINAL DEVELOPMENT INSTRUCTION**
+
+Prioritise a fully functional maze gameplay experience before implementing secondary features.
+
+Do not use placeholder buttons, simulated leaderboards, hardcoded user accounts or fake Firebase functionality.
+
+All navigation, gameplay, scoring, authentication, progression, database operations and administration features must be genuinely implemented and tested.
+
+Build the game with a polished, relaxing presentation, highly responsive controls and an extensible architecture capable of supporting thousands of maze puzzles and a growing online player community.
+
+## Recommended development considerations
+
+A few important decisions will help make the build more reliable:
+
+| Area             | Recommendation                                       |
+| ---------------- | ---------------------------------------------------- |
+| Puzzle storage   | Store maze layouts and generation seeds in Firestore |
+| Maze generation  | Generate and validate puzzles before publishing      |
+| Authentication   | Firebase Email/Password                              |
+| Leaderboards     | Cloud Functions with server-side validation          |
+| Progression      | Individual user progress documents                   |
+| Daily challenges | Scheduled Cloud Functions                            |
+| Administration   | Separate protected admin dashboard                   |
+
+My strongest recommendation: build the maze generation engine and playable Classic mode first, then introduce the Firebase functionality and additional game modes. This will make it much easier to test the actual gameplay before adding the more complicated systems.
+
+The next useful development step would be to create the complete Firebase database schema and a starter collection of 200 maze puzzles, ready for import into the application.

@@ -1,0 +1,156 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User profile with game progress totals, stars and settings",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "maxLength": 128 },
+        "displayName": { "type": "string", "maxLength": 50 },
+        "email": { "type": "string", "maxLength": 128 },
+        "emailVerified": { "type": "boolean" },
+        "totalPoints": { "type": "number" },
+        "totalLevelsCompleted": { "type": "number" },
+        "totalStars": { "type": "number" },
+        "totalPlayTime": { "type": "number" },
+        "currentConstellation": { "type": "string", "maxLength": 64 },
+        "currentLevel": { "type": "number" },
+        "selectedTheme": { "type": "string", "maxLength": 32 },
+        "movementMode": { "type": "string", "enum": ["continuous", "step"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "displayName", "email"]
+    },
+    "UserProgress": {
+      "title": "UserProgress",
+      "description": "Progress record for a specific puzzle completed by a player",
+      "type": "object",
+      "properties": {
+        "puzzleId": { "type": "string", "maxLength": 128 },
+        "completed": { "type": "boolean" },
+        "bestTime": { "type": "number" },
+        "bestMoveCount": { "type": "number" },
+        "starsAwarded": { "type": "number" },
+        "pointsEarned": { "type": "number" },
+        "completionCount": { "type": "number" },
+        "unlocked": { "type": "boolean" },
+        "lastPlayedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["puzzleId", "completed", "starsAwarded"]
+    },
+    "Puzzle": {
+      "title": "Puzzle",
+      "description": "Deterministic maze puzzle configuration with start, exit, geometry and game mode",
+      "type": "object",
+      "properties": {
+        "puzzleId": { "type": "string", "maxLength": 128 },
+        "constellationId": { "type": "string", "maxLength": 64 },
+        "levelNumber": { "type": "number" },
+        "puzzleName": { "type": "string", "maxLength": 64 },
+        "mazeShape": { "type": "string", "maxLength": 32 },
+        "gridWidth": { "type": "number" },
+        "gridHeight": { "type": "number" },
+        "difficulty": { "type": "string", "maxLength": 20 },
+        "gameMode": { "type": "string", "maxLength": 32 },
+        "generationSeed": { "type": "number" },
+        "timeLimit": { "type": "number" },
+        "moveLimit": { "type": "number" },
+        "basePoints": { "type": "number" },
+        "isPublished": { "type": "boolean" },
+        "isActive": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["puzzleId", "puzzleName", "mazeShape", "difficulty", "gameMode"]
+    },
+    "Constellation": {
+      "title": "Constellation",
+      "description": "Constellation data including thematic stars and unlock thresholds",
+      "type": "object",
+      "properties": {
+        "constellationId": { "type": "string", "maxLength": 64 },
+        "constellationName": { "type": "string", "maxLength": 64 },
+        "description": { "type": "string", "maxLength": 256 },
+        "orderIndex": { "type": "number" },
+        "totalLevels": { "type": "number" },
+        "requiredStars": { "type": "number" },
+        "isActive": { "type": "boolean" }
+      },
+      "required": ["constellationId", "constellationName", "orderIndex", "totalLevels"]
+    },
+    "LeaderboardScore": {
+      "title": "LeaderboardScore",
+      "description": "Validated competitive score entry",
+      "type": "object",
+      "properties": {
+        "scoreId": { "type": "string", "maxLength": 128 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "displayNameSnapshot": { "type": "string", "maxLength": 50 },
+        "puzzleId": { "type": "string", "maxLength": 128 },
+        "gameMode": { "type": "string", "maxLength": 32 },
+        "completionTime": { "type": "number" },
+        "moveCount": { "type": "number" },
+        "points": { "type": "number" },
+        "stars": { "type": "number" },
+        "submittedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["scoreId", "userId", "displayNameSnapshot", "puzzleId", "points"]
+    },
+    "Challenge": {
+      "title": "Challenge",
+      "description": "Daily or weekly scheduled maze challenge",
+      "type": "object",
+      "properties": {
+        "challengeId": { "type": "string", "maxLength": 64 },
+        "challengeType": { "type": "string", "enum": ["daily", "weekly"] },
+        "challengeDate": { "type": "string", "maxLength": 32 },
+        "puzzleId": { "type": "string", "maxLength": 128 },
+        "title": { "type": "string", "maxLength": 64 },
+        "bonusPoints": { "type": "number" },
+        "isActive": { "type": "boolean" }
+      },
+      "required": ["challengeId", "challengeType", "puzzleId"]
+    },
+    "AdminDoc": {
+      "title": "AdminDoc",
+      "description": "Administrator whitelist marker document",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string", "maxLength": 128 },
+        "role": { "type": "string", "maxLength": 32 },
+        "grantedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["email", "role"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "User profile document containing stats and preferences"
+    },
+    "/users/{userId}/progress/{puzzleId}": {
+      "schema": { "$ref": "#/entities/UserProgress" },
+      "description": "Per-puzzle progress and best records for user"
+    },
+    "/puzzles/{puzzleId}": {
+      "schema": { "$ref": "#/entities/Puzzle" },
+      "description": "Published and custom maze puzzles"
+    },
+    "/constellations/{constellationId}": {
+      "schema": { "$ref": "#/entities/Constellation" },
+      "description": "Celestial constellations of the adventure"
+    },
+    "/leaderboardScores/{scoreId}": {
+      "schema": { "$ref": "#/entities/LeaderboardScore" },
+      "description": "Global and mode leaderboard score entries"
+    },
+    "/challenges/{challengeId}": {
+      "schema": { "$ref": "#/entities/Challenge" },
+      "description": "Daily and weekly challenges"
+    },
+    "/admins/{adminId}": {
+      "schema": { "$ref": "#/entities/AdminDoc" },
+      "description": "Administrator authorizations"
+    }
+  }
+}
