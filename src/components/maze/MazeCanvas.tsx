@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { ColorTheme, Coordinate, GameMode, MazeGraph, MazeNode, MovementMode } from '../../types/game';
 import { soundManager } from '../../services/audio';
+import { getCircularParams } from '../../services/mazeEngine';
 
 interface MazeCanvasProps {
   graph: MazeGraph;
@@ -72,8 +73,14 @@ export const MazeCanvas: React.FC<MazeCanvasProps> = ({
 
   // Calculate pixel center for any node in any geometry
   const getNodePixelCenter = useCallback(
-    (nodeId: string, width: number, height: number): { x: number; y: number } => {
-      const node = graph.nodes.get(nodeId);
+    (nodeIdOrKey: string, width: number, height: number): { x: number; y: number } => {
+      let node = graph.nodes.get(nodeIdOrKey);
+      if (!node && nodeIdOrKey.includes(',')) {
+        const [cx, cy] = nodeIdOrKey.split(',').map(Number);
+        node = Array.from(graph.nodes.values()).find(
+          (n) => n.coord.x === cx && n.coord.y === cy
+        );
+      }
       if (!node) return { x: width / 2, y: height / 2 };
 
       const pad = 24;
@@ -83,14 +90,14 @@ export const MazeCanvas: React.FC<MazeCanvasProps> = ({
       if (graph.geometry === 'circular') {
         const center = { x: width / 2, y: height / 2 };
         const maxRadius = Math.min(renderW, renderH) / 2;
-        const numRings = Math.max(3, Math.floor(Math.min(graph.width, graph.height) / 2));
-        const ringWidth = maxRadius / numRings;
+        const { numRings, numSectors } = getCircularParams(graph.width, graph.height);
+        const ringWidth = maxRadius / (numRings + 0.5);
 
-        const r = node.coord.ring || 0;
-        const s = node.coord.sector || 0;
-        const numSectors = r === 0 ? 4 : Math.min(24, 6 * (r + 1));
-        const rMid = (r + 0.5) * ringWidth;
-        const angleMid = (s + 0.5) * ((Math.PI * 2) / numSectors) - Math.PI / 2;
+        const r = node.coord.ring ?? 0;
+        const s = node.coord.sector ?? 0;
+        const rMid = (r + 1.0) * ringWidth;
+        const angleStep = (Math.PI * 2) / numSectors;
+        const angleMid = (s + 0.5) * angleStep - Math.PI / 2;
 
         return {
           x: center.x + Math.cos(angleMid) * rMid,
@@ -128,42 +135,43 @@ export const MazeCanvas: React.FC<MazeCanvasProps> = ({
       const node = graph.nodes.get(fromId);
       if (!node) return null;
 
+      if (graph.geometry === 'circular') {
+        const r = node.coord.ring ?? 0;
+        const s = node.coord.sector ?? 0;
+        const { numRings, numSectors } = getCircularParams(graph.width, graph.height);
+
+        let targetId: string | null = null;
+        if (d === 'up') {
+          // Inward (towards center)
+          if (r > 0) targetId = `r${r - 1}_s${s}`;
+        } else if (d === 'down') {
+          // Outward (towards outer rim)
+          if (r < numRings - 1) targetId = `r${r + 1}_s${s}`;
+        } else if (d === 'right') {
+          // Clockwise
+          targetId = `r${r}_s${(s + 1) % numSectors}`;
+        } else if (d === 'left') {
+          // Counter-Clockwise
+          targetId = `r${r}_s${(s - 1 + numSectors) % numSectors}`;
+        }
+
+        if (targetId && node.neighbors.includes(targetId)) {
+          return targetId;
+        }
+        return null;
+      }
+
       for (const nId of node.neighbors) {
         const neighbor = graph.nodes.get(nId);
         if (!neighbor) continue;
 
-        if (graph.geometry === 'circular') {
-          if (
-            d === 'up' &&
-            neighbor.coord.ring !== undefined &&
-            node.coord.ring !== undefined &&
-            neighbor.coord.ring < node.coord.ring
-          ) {
-            return nId; // Inward
-          }
-          if (
-            d === 'down' &&
-            neighbor.coord.ring !== undefined &&
-            node.coord.ring !== undefined &&
-            neighbor.coord.ring > node.coord.ring
-          ) {
-            return nId; // Outward
-          }
-          if (d === 'right' && neighbor.coord.ring === node.coord.ring) {
-            return nId; // Clockwise
-          }
-          if (d === 'left' && neighbor.coord.ring === node.coord.ring) {
-            return nId; // Counter-clockwise
-          }
-        } else {
-          const dx = neighbor.coord.x - node.coord.x;
-          const dy = neighbor.coord.y - node.coord.y;
+        const dx = neighbor.coord.x - node.coord.x;
+        const dy = neighbor.coord.y - node.coord.y;
 
-          if (d === 'up' && dy < 0 && Math.abs(dx) <= 1) return nId;
-          if (d === 'down' && dy > 0 && Math.abs(dx) <= 1) return nId;
-          if (d === 'left' && dx < 0 && Math.abs(dy) <= 1) return nId;
-          if (d === 'right' && dx > 0 && Math.abs(dy) <= 1) return nId;
-        }
+        if (d === 'up' && dy < 0 && Math.abs(dx) <= 1) return nId;
+        if (d === 'down' && dy > 0 && Math.abs(dx) <= 1) return nId;
+        if (d === 'left' && dx < 0 && Math.abs(dy) <= 1) return nId;
+        if (d === 'right' && dx > 0 && Math.abs(dy) <= 1) return nId;
       }
       return null;
     },
@@ -525,22 +533,29 @@ export const MazeCanvas: React.FC<MazeCanvasProps> = ({
     else if (graph.geometry === 'circular') {
       const center = { x: width / 2, y: height / 2 };
       const maxRadius = Math.min(renderW, renderH) / 2;
-      const numRings = Math.max(3, Math.floor(Math.min(graph.width, graph.height) / 2));
-      const ringWidth = maxRadius / numRings;
+      const { numRings, numSectors } = getCircularParams(graph.width, graph.height);
+      const ringWidth = maxRadius / (numRings + 0.5);
 
+      // Floor of the circular labyrinth
       ctx.fillStyle = theme.pathColor;
       ctx.beginPath();
       ctx.arc(center.x, center.y, maxRadius, 0, Math.PI * 2);
       ctx.fill();
 
+      // Dark central sanctuary hub
+      ctx.fillStyle = theme.bgDark;
+      ctx.beginPath();
+      ctx.arc(center.x, center.y, 0.5 * ringWidth, 0, Math.PI * 2);
+      ctx.fill();
+
       // Exit indicator
       const exitNode = graph.nodes.get(graph.exitNodeId);
       if (exitNode) {
-        const r = exitNode.coord.ring || 0;
-        const s = exitNode.coord.sector || 0;
-        const numSectors = r === 0 ? 4 : Math.min(24, 6 * (r + 1));
-        const rMid = (r + 0.5) * ringWidth;
-        const angleMid = (s + 0.5) * ((Math.PI * 2) / numSectors) - Math.PI / 2;
+        const r = exitNode.coord.ring ?? 0;
+        const s = exitNode.coord.sector ?? 0;
+        const angleStep = (Math.PI * 2) / numSectors;
+        const rMid = (r + 1.0) * ringWidth;
+        const angleMid = (s + 0.5) * angleStep - Math.PI / 2;
         const ex = center.x + Math.cos(angleMid) * rMid;
         const ey = center.y + Math.sin(angleMid) * rMid;
 
@@ -549,52 +564,67 @@ export const MazeCanvas: React.FC<MazeCanvasProps> = ({
         ctx.shadowBlur = 14;
         ctx.fillStyle = theme.exitGlow;
         ctx.beginPath();
-        ctx.arc(ex, ey, Math.max(5, ringWidth * 0.28), 0, Math.PI * 2);
+        ctx.arc(ex, ey, Math.max(5, ringWidth * 0.3), 0, Math.PI * 2);
         ctx.fill();
         ctx.fillStyle = theme.exitCore;
         ctx.beginPath();
-        ctx.arc(ex, ey, Math.max(2.5, ringWidth * 0.14), 0, Math.PI * 2);
+        ctx.arc(ex, ey, Math.max(2.5, ringWidth * 0.15), 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
       }
 
-      // Draw circular walls
+      // Draw crisp circular walls (discrete subpaths to prevent any stray connecting chords)
       ctx.save();
-      ctx.lineWidth = Math.max(2.5, Math.min(5, ringWidth * 0.12));
+      const wallThickness = Math.max(2.5, Math.min(5, ringWidth * 0.12));
+      ctx.lineWidth = wallThickness;
+      ctx.lineCap = 'round';
       ctx.strokeStyle = theme.wallColor;
       ctx.shadowColor = theme.wallColor;
-      ctx.shadowBlur = 4;
+      ctx.shadowBlur = 3;
+
+      // Inner boundary circle around central hub
       ctx.beginPath();
+      ctx.arc(center.x, center.y, 0.5 * ringWidth, 0, Math.PI * 2);
+      ctx.stroke();
+
+      const angleStep = (Math.PI * 2) / numSectors;
 
       graph.nodes.forEach((node) => {
-        const r = node.coord.ring || 0;
-        const s = node.coord.sector || 0;
-        const numSectors = r === 0 ? 4 : Math.min(24, 6 * (r + 1));
-        const angleStep = (Math.PI * 2) / numSectors;
+        const r = node.coord.ring ?? 0;
+        const s = node.coord.sector ?? 0;
         const a0 = s * angleStep - Math.PI / 2;
         const a1 = (s + 1) * angleStep - Math.PI / 2;
-        const rInner = r * ringWidth;
-        const rOuter = (r + 1) * ringWidth;
+        const rInner = (r + 0.5) * ringWidth;
+        const rOuter = (r + 1.5) * ringWidth;
 
+        // 1. Outer Arc Wall: draw if not connected outward
         if (r === numRings - 1) {
-          ctx.arc(center.x, center.y, rOuter, a0, a1);
-        } else {
-          const outerRingSectors = Math.min(24, 6 * (r + 2));
-          const outerS = Math.floor((s / numSectors) * outerRingSectors);
-          const outerId = `r${r + 1}_s${outerS}`;
-          if (!node.neighbors.includes(outerId)) {
+          // Outermost boundary of the maze: leave an open gate at the exit node
+          if (node.id !== graph.exitNodeId) {
+            ctx.beginPath();
             ctx.arc(center.x, center.y, rOuter, a0, a1);
+            ctx.stroke();
+          }
+        } else {
+          const outerId = `r${r + 1}_s${s}`;
+          if (!node.neighbors.includes(outerId)) {
+            ctx.beginPath();
+            ctx.arc(center.x, center.y, rOuter, a0, a1);
+            ctx.stroke();
           }
         }
 
+        // 2. Radial Spoke Wall at angle a0 (between this sector and counter-clockwise neighbor)
         const prevS = (s - 1 + numSectors) % numSectors;
         const prevId = `r${r}_s${prevS}`;
         if (!node.neighbors.includes(prevId)) {
+          ctx.beginPath();
           ctx.moveTo(center.x + Math.cos(a0) * rInner, center.y + Math.sin(a0) * rInner);
           ctx.lineTo(center.x + Math.cos(a0) * rOuter, center.y + Math.sin(a0) * rOuter);
+          ctx.stroke();
         }
       });
-      ctx.stroke();
+
       ctx.restore();
     }
 
@@ -1117,6 +1147,33 @@ export const MazeCanvas: React.FC<MazeCanvasProps> = ({
 
           const pivotX = floatingPosRef.current.x || rect.width / 2;
           const pivotY = floatingPosRef.current.y || rect.height / 2;
+
+          if (graph.geometry === 'circular') {
+            const cx = rect.width / 2;
+            const cy = rect.height / 2;
+            const rPlayer = Math.hypot(pivotX - cx, pivotY - cy);
+            const rClick = Math.hypot(clickX - cx, clickY - cy);
+            const { numRings } = getCircularParams(graph.width, graph.height);
+            const maxRadius = Math.min(rect.width, rect.height) / 2;
+            const ringWidth = maxRadius / (numRings + 0.5);
+
+            const dr = rClick - rPlayer;
+            // If radial difference is significant, steer radially:
+            if (Math.abs(dr) > ringWidth * 0.4) {
+              triggerMove(dr > 0 ? 'down' : 'up'); // down = outward, up = inward
+              return;
+            }
+
+            // Angular difference: clockwise vs counter-clockwise
+            const thetaClick = Math.atan2(clickY - cy, clickX - cx);
+            const thetaPlayer = Math.atan2(pivotY - cy, pivotX - cx);
+            let dTheta = thetaClick - thetaPlayer;
+            while (dTheta > Math.PI) dTheta -= 2 * Math.PI;
+            while (dTheta < -Math.PI) dTheta += 2 * Math.PI;
+
+            triggerMove(dTheta > 0 ? 'right' : 'left'); // right = CW, left = CCW
+            return;
+          }
 
           const dx = clickX - pivotX;
           const dy = clickY - pivotY;

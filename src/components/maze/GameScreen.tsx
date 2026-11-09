@@ -295,7 +295,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({ puzzle, onBack }) => {
             <button
               onClick={() => controllerRef.current?.('up')}
               className="w-16 h-12 md:w-20 md:h-14 rounded-2xl bg-slate-800/90 active:bg-sky-500/20 active:border-sky-400 active:scale-90 border border-slate-700/80 flex items-center justify-center text-white shadow-xl shadow-black/50 transition-all touch-manipulation group"
-              title="Move Up"
+              title={puzzle.geometry === 'circular' ? 'Move Inward (towards center)' : 'Move Up'}
             >
               <ChevronUp className="w-7 h-7 text-sky-400 group-active:text-sky-200" />
             </button>
@@ -303,7 +303,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({ puzzle, onBack }) => {
               <button
                 onClick={() => controllerRef.current?.('left')}
                 className="w-16 h-12 md:w-20 md:h-14 rounded-2xl bg-slate-800/90 active:bg-sky-500/20 active:border-sky-400 active:scale-90 border border-slate-700/80 flex items-center justify-center text-white shadow-xl shadow-black/50 transition-all touch-manipulation group"
-                title="Move Left"
+                title={puzzle.geometry === 'circular' ? 'Move Counter-Clockwise' : 'Move Left'}
               >
                 <ChevronLeft className="w-7 h-7 text-sky-400 group-active:text-sky-200" />
               </button>
@@ -313,7 +313,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({ puzzle, onBack }) => {
               <button
                 onClick={() => controllerRef.current?.('right')}
                 className="w-16 h-12 md:w-20 md:h-14 rounded-2xl bg-slate-800/90 active:bg-sky-500/20 active:border-sky-400 active:scale-90 border border-slate-700/80 flex items-center justify-center text-white shadow-xl shadow-black/50 transition-all touch-manipulation group"
-                title="Move Right"
+                title={puzzle.geometry === 'circular' ? 'Move Clockwise' : 'Move Right'}
               >
                 <ChevronRight className="w-7 h-7 text-sky-400 group-active:text-sky-200" />
               </button>
@@ -321,7 +321,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({ puzzle, onBack }) => {
             <button
               onClick={() => controllerRef.current?.('down')}
               className="w-16 h-12 md:w-20 md:h-14 rounded-2xl bg-slate-800/90 active:bg-sky-500/20 active:border-sky-400 active:scale-90 border border-slate-700/80 flex items-center justify-center text-white shadow-xl shadow-black/50 transition-all touch-manipulation group"
-              title="Move Down"
+              title={puzzle.geometry === 'circular' ? 'Move Outward (towards perimeter)' : 'Move Down'}
             >
               <ChevronDown className="w-7 h-7 text-sky-400 group-active:text-sky-200" />
             </button>
@@ -380,7 +380,11 @@ export const GameScreen: React.FC<GameScreenProps> = ({ puzzle, onBack }) => {
 
         {/* Center Instructions */}
         <div className="hidden sm:flex items-center gap-2 text-xs text-slate-400">
-          <span>Swipe, Tap, or use Keys to move</span>
+          <span>
+            {puzzle.geometry === 'circular'
+              ? 'Concentric Rings: Up=In, Down=Out, Left/Right=Turn'
+              : 'Swipe, Tap, or use Keys to move'}
+          </span>
         </div>
 
         {/* Action Buttons: Hint & Restart */}

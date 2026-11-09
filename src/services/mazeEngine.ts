@@ -129,6 +129,13 @@ function scaleMask(mask: number[][], targetW: number, targetH: number): boolean[
   return result;
 }
 
+// Calculate consistent concentric polar maze parameters
+export function getCircularParams(width: number, height: number): { numRings: number; numSectors: number } {
+  const numRings = Math.max(3, Math.min(10, Math.floor(Math.min(width, height) / 2)));
+  const numSectors = Math.max(12, Math.min(24, 8 + numRings * 2));
+  return { numRings, numSectors };
+}
+
 // Generate Maze Graph using Randomized DFS
 export function generateMaze(
   geometry: MazeGeometry,
@@ -171,12 +178,10 @@ export function generateMaze(
       }
     }
   } else if (geometry === 'circular') {
-    // Concentric rings
-    const numRings = Math.max(3, Math.floor(Math.min(width, height) / 2));
+    // Concentric rings with uniform sector subdivision guaranteeing 100% reciprocal symmetry
+    const { numRings, numSectors } = getCircularParams(width, height);
     for (let r = 0; r < numRings; r++) {
-      // Ring 0 has 4 sectors, each outer ring has more
-      const sectorsInRing = r === 0 ? 4 : Math.min(24, 6 * (r + 1));
-      for (let s = 0; s < sectorsInRing; s++) {
+      for (let s = 0; s < numSectors; s++) {
         const id = `r${r}_s${s}`;
         cellKeys.push(id);
         coordsMap.set(id, { x: s, y: r, ring: r, sector: s });
@@ -233,27 +238,22 @@ export function generateMaze(
     } else if (geometry === 'circular') {
       const r = c.ring!;
       const s = c.sector!;
-      const currentRingSectors = r === 0 ? 4 : Math.min(24, 6 * (r + 1));
-      
-      // Clockwise & Counter-clockwise in same ring
-      const prevSector = (s - 1 + currentRingSectors) % currentRingSectors;
-      const nextSector = (s + 1) % currentRingSectors;
+      const { numRings, numSectors } = getCircularParams(width, height);
+
+      // 1. Clockwise & Counter-clockwise in same ring
+      const prevSector = (s - 1 + numSectors) % numSectors;
+      const nextSector = (s + 1) % numSectors;
       potential.push(`r${r}_s${prevSector}`);
       potential.push(`r${r}_s${nextSector}`);
 
-      // Inward ring connection
+      // 2. Inward ring connection (towards center)
       if (r > 0) {
-        const innerRingSectors = r === 1 ? 4 : Math.min(24, 6 * r);
-        const innerS = Math.floor((s / currentRingSectors) * innerRingSectors);
-        potential.push(`r${r - 1}_s${innerS}`);
+        potential.push(`r${r - 1}_s${s}`);
       }
 
-      // Outward ring connection
-      const numRings = Math.max(3, Math.floor(Math.min(width, height) / 2));
+      // 3. Outward ring connection (towards outer rim)
       if (r < numRings - 1) {
-        const outerRingSectors = Math.min(24, 6 * (r + 2));
-        const outerS = Math.floor((s / currentRingSectors) * outerRingSectors);
-        potential.push(`r${r + 1}_s${outerS}`);
+        potential.push(`r${r + 1}_s${s}`);
       }
     } else if (geometry === 'triangular') {
       // Triangle pointing up (x + y is even) or pointing down (odd)
@@ -298,7 +298,7 @@ export function generateMaze(
 
   // Randomized DFS / Backtracking Maze Generation
   const visited = new Set<string>();
-  const startNodeId = cellKeys[0];
+  const startNodeId = geometry === 'circular' ? 'r0_s0' : cellKeys[0];
   const stack: string[] = [startNodeId];
   visited.add(startNodeId);
 
@@ -341,10 +341,26 @@ export function generateMaze(
   let maxDist = -1;
   let exitNodeId = cellKeys[cellKeys.length - 1];
 
-  for (const [id, dist] of distances.entries()) {
-    if (dist > maxDist) {
-      maxDist = dist;
-      exitNodeId = id;
+  if (geometry === 'circular') {
+    const { numRings } = getCircularParams(width, height);
+    const outerRing = numRings - 1;
+    // Prefer furthest node on the outermost ring for a full concentric labyrinth journey
+    for (const [id, dist] of distances.entries()) {
+      const node = nodes.get(id);
+      if (node && node.coord.ring === outerRing && dist > maxDist) {
+        maxDist = dist;
+        exitNodeId = id;
+      }
+    }
+  }
+
+  // Fallback to absolute furthest node if no outer ring node found or for other geometries
+  if (maxDist === -1) {
+    for (const [id, dist] of distances.entries()) {
+      if (dist > maxDist) {
+        maxDist = dist;
+        exitNodeId = id;
+      }
     }
   }
 
