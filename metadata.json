@@ -1,8 +1,6 @@
 {
-  "name": "Maze Quest",
+  "name": "Maze: Labyrinth & Constellation Quest",
   "description": "A relaxing maze puzzle adventure featuring glowing paths, multiple geometries, 10 celestial constellations, and global challenges.",
   "requestFramePermissions": [],
-  "majorCapabilities": [
-    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
-  ]
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

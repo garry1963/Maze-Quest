@@ -8,6 +8,8 @@ import {
   sendPasswordResetEmail,
   onAuthStateChanged,
   updateProfile,
+  GoogleAuthProvider,
+  signInWithPopup,
 } from 'firebase/auth';
 import { auth } from '../firebase';
 import { UserProfileData } from '../types/game';
@@ -19,6 +21,7 @@ interface AuthContextType {
   loading: boolean;
   isAdmin: boolean;
   isGuest: boolean;
+  loginWithGoogle: () => Promise<void>;
   loginWithEmail: (email: string, pass: string) => Promise<void>;
   registerWithEmail: (email: string, pass: string, displayName: string) => Promise<void>;
   resendVerification: () => Promise<void>;
@@ -84,38 +87,86 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => unsubscribe();
   }, []);
 
+  const loginWithGoogle = async () => {
+    const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: 'select_account' });
+    const cred = await signInWithPopup(auth, provider);
+    if (cred.user) {
+      const remoteProfile = await loadUserProfile(cred.user.uid);
+      if (!remoteProfile) {
+        const local = getLocalProfile();
+        const newProfile: UserProfileData = {
+          uid: cred.user.uid,
+          displayName: cred.user.displayName || cred.user.email?.split('@')[0] || 'Voyager',
+          email: cred.user.email || '',
+          emailVerified: cred.user.emailVerified,
+          totalPoints: local.totalPoints || 0,
+          totalLevelsCompleted: local.totalLevelsCompleted || 0,
+          totalStars: local.totalStars || 0,
+          totalPlayTime: local.totalPlayTime || 0,
+          currentConstellation: local.currentConstellation || 'c1_ursa_minor',
+          currentLevel: local.currentLevel || 1,
+          selectedTheme: local.selectedTheme || 'midnight_blue',
+          movementMode: local.movementMode || 'continuous',
+          isGuest: false,
+          role: cred.user.email === 'garrydavies1963@gmail.com' ? 'admin' : 'player',
+        };
+        setProfile(newProfile);
+        await syncUserProfile(newProfile);
+      }
+    }
+  };
+
   const loginWithEmail = async (email: string, pass: string) => {
-    await signInWithEmailAndPassword(auth, email, pass);
+    try {
+      await signInWithEmailAndPassword(auth, email, pass);
+    } catch (err: any) {
+      if (err?.code === 'auth/operation-not-allowed') {
+        throw new Error(
+          'Email/Password sign-in is not enabled in Firebase Console. Please use "Sign in with Google" instead.'
+        );
+      }
+      throw err;
+    }
   };
 
   const registerWithEmail = async (email: string, pass: string, displayName: string) => {
-    const cred = await createUserWithEmailAndPassword(auth, email, pass);
-    if (cred.user) {
-      await updateProfile(cred.user, { displayName });
-      try {
-        await sendEmailVerification(cred.user);
-      } catch (e) {
-        console.warn('Verification email send notice:', e);
+    try {
+      const cred = await createUserWithEmailAndPassword(auth, email, pass);
+      if (cred.user) {
+        await updateProfile(cred.user, { displayName });
+        try {
+          await sendEmailVerification(cred.user);
+        } catch (e) {
+          console.warn('Verification email send notice:', e);
+        }
+        const local = getLocalProfile();
+        const newProfile: UserProfileData = {
+          uid: cred.user.uid,
+          displayName,
+          email,
+          emailVerified: false,
+          totalPoints: local.totalPoints || 0,
+          totalLevelsCompleted: local.totalLevelsCompleted || 0,
+          totalStars: local.totalStars || 0,
+          totalPlayTime: local.totalPlayTime || 0,
+          currentConstellation: local.currentConstellation || 'c1_ursa_minor',
+          currentLevel: local.currentLevel || 1,
+          selectedTheme: local.selectedTheme || 'midnight_blue',
+          movementMode: local.movementMode || 'continuous',
+          isGuest: false,
+          role: email === 'garrydavies1963@gmail.com' ? 'admin' : 'player',
+        };
+        setProfile(newProfile);
+        await syncUserProfile(newProfile);
       }
-      const local = getLocalProfile();
-      const newProfile: UserProfileData = {
-        uid: cred.user.uid,
-        displayName,
-        email,
-        emailVerified: false,
-        totalPoints: local.totalPoints || 0,
-        totalLevelsCompleted: local.totalLevelsCompleted || 0,
-        totalStars: local.totalStars || 0,
-        totalPlayTime: local.totalPlayTime || 0,
-        currentConstellation: local.currentConstellation || 'c1_ursa_minor',
-        currentLevel: local.currentLevel || 1,
-        selectedTheme: local.selectedTheme || 'midnight_blue',
-        movementMode: local.movementMode || 'continuous',
-        isGuest: false,
-        role: email === 'garrydavies1963@gmail.com' ? 'admin' : 'player',
-      };
-      setProfile(newProfile);
-      await syncUserProfile(newProfile);
+    } catch (err: any) {
+      if (err?.code === 'auth/operation-not-allowed') {
+        throw new Error(
+          'Email/Password sign-up is not enabled in Firebase Console. Please use "Sign in with Google" instead.'
+        );
+      }
+      throw err;
     }
   };
 
@@ -163,6 +214,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         loading,
         isAdmin,
         isGuest,
+        loginWithGoogle,
         loginWithEmail,
         registerWithEmail,
         resendVerification,

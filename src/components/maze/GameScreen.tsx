@@ -19,6 +19,7 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
+  Gauge,
 } from 'lucide-react';
 import { MazeCanvas } from './MazeCanvas';
 import { generateMaze } from '../../services/mazeEngine';
@@ -57,6 +58,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({ puzzle, onBack }) => {
     }
     return false;
   });
+  const [speedSetting, setSpeedSetting] = useState<'relaxed' | 'normal' | 'fast'>('normal');
   const controllerRef = useRef<((dir: 'up' | 'down' | 'left' | 'right') => void) | null>(null);
 
   // Victory modal state
@@ -277,6 +279,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({ puzzle, onBack }) => {
           mode={puzzle.mode}
           theme={activeTheme}
           movementMode={profile.movementMode}
+          speedSetting={speedSetting}
           showHint={showHint}
           controllerRef={controllerRef}
           onMove={handleMove}
@@ -328,7 +331,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({ puzzle, onBack }) => {
 
       {/* Bottom Controls Bar */}
       <footer className="w-full max-w-4xl flex items-center justify-between py-3 border-t border-slate-800/80 mt-2">
-        {/* Mode selector & D-pad switch */}
+        {/* Mode selector, Speed toggle & D-pad switch */}
         <div className="flex items-center gap-2">
           <button
             onClick={() =>
@@ -342,6 +345,22 @@ export const GameScreen: React.FC<GameScreenProps> = ({ puzzle, onBack }) => {
             <span className="text-slate-400">Controls:</span>
             <span className="text-sky-400 font-semibold capitalize">
               {profile.movementMode}
+            </span>
+          </button>
+
+          <button
+            onClick={() => {
+              setSpeedSetting((prev) =>
+                prev === 'normal' ? 'relaxed' : prev === 'relaxed' ? 'fast' : 'normal'
+              );
+            }}
+            className="px-3 py-2 rounded-xl bg-slate-900/80 hover:bg-slate-800 border border-slate-700/60 text-xs font-medium text-slate-300 flex items-center gap-1.5 transition-all"
+            title="Toggle movement speed: Normal (8.5/s), Relaxed (6.0/s), Fast (11.5/s)"
+          >
+            <Gauge className="w-3.5 h-3.5 text-emerald-400" />
+            <span className="text-slate-400 hidden sm:inline">Speed:</span>
+            <span className="text-emerald-400 font-semibold capitalize">
+              {speedSetting}
             </span>
           </button>
 
