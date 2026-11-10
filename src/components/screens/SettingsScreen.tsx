@@ -8,6 +8,8 @@ import {
   Check,
   Music,
   Sliders,
+  Gauge,
+  Zap,
 } from 'lucide-react';
 import { useGame } from '../../context/GameContext';
 import { useAuth } from '../../context/AuthContext';
@@ -17,7 +19,7 @@ import { ColorThemeId, MovementMode } from '../../types/game';
 
 export const SettingsScreen: React.FC = () => {
   const { setCurrentScreen } = useGame();
-  const { profile, updateTheme, updateMovementMode } = useAuth();
+  const { profile, updateTheme, updateMovementMode, updatePlayerSpeed } = useAuth();
 
   const [musicEnabled, setMusicEnabled] = useState(soundManager.musicEnabled);
   const [sfxEnabled, setSfxEnabled] = useState(soundManager.sfxEnabled);
@@ -169,6 +171,65 @@ export const SettingsScreen: React.FC = () => {
             <p className="text-xs text-slate-400">
               Each swipe or keypress advances the player exactly one cell. Great for strategic puzzle solving and restricted moves mode.
             </p>
+          </div>
+        </div>
+
+        {/* Player Movement Speed Control */}
+        <div className="p-4 rounded-2xl bg-slate-950/80 border border-slate-800/80 flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Gauge className="w-4 h-4 text-amber-400" />
+              <span className="text-sm font-bold text-white">Light Movement Speed</span>
+            </div>
+            <span className="px-2.5 py-0.5 rounded-full text-xs font-mono font-bold bg-amber-500/10 text-amber-300 border border-amber-500/30">
+              {(profile.playerSpeed ?? 10.0).toFixed(1)} cells/sec
+            </span>
+          </div>
+
+          <p className="text-xs text-slate-400">
+            Control how swiftly your glowing orb navigates maze corridors. Can also be adjusted live during gameplay.
+          </p>
+
+          <div className="flex items-center gap-3 pt-1">
+            <span className="text-[11px] text-slate-400 font-medium">Slow</span>
+            <input
+              type="range"
+              min="4"
+              max="22"
+              step="0.5"
+              value={profile.playerSpeed ?? 10.0}
+              onChange={(e) => updatePlayerSpeed(parseFloat(e.target.value))}
+              className="flex-1 h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-amber-400"
+            />
+            <span className="text-[11px] text-amber-400/80 font-medium">Hyper</span>
+          </div>
+
+          {/* Quick presets */}
+          <div className="grid grid-cols-5 gap-1.5 pt-1">
+            {[
+              { label: 'Slow', speed: 5.0, icon: '🐢' },
+              { label: 'Relaxed', speed: 7.5, icon: '🌿' },
+              { label: 'Normal', speed: 10.0, icon: '⚡' },
+              { label: 'Fast', speed: 14.0, icon: '🚀' },
+              { label: 'Hyper', speed: 19.0, icon: '🔥' },
+            ].map((preset) => {
+              const active = Math.abs((profile.playerSpeed ?? 10.0) - preset.speed) < 0.25;
+              return (
+                <button
+                  key={preset.label}
+                  type="button"
+                  onClick={() => updatePlayerSpeed(preset.speed)}
+                  className={`py-1.5 px-2 rounded-xl text-xs font-medium border transition-all text-center flex flex-col sm:flex-row items-center justify-center gap-1 ${
+                    active
+                      ? 'bg-amber-500/20 border-amber-500/50 text-amber-300 shadow-sm shadow-amber-500/20 font-bold'
+                      : 'bg-slate-900/80 border-slate-800 text-slate-400 hover:text-white hover:bg-slate-850'
+                  }`}
+                >
+                  <span className="text-xs">{preset.icon}</span>
+                  <span className="text-[10px] sm:text-xs truncate">{preset.label}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
       </section>

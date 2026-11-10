@@ -9,6 +9,7 @@ interface MazeCanvasProps {
   theme: ColorTheme;
   movementMode: MovementMode;
   speedSetting?: 'relaxed' | 'normal' | 'fast';
+  playerSpeed?: number; // Fluid movement velocity in cells/sec (e.g. 4.0 to 22.0)
   showHint?: boolean;
   controllerRef?: React.MutableRefObject<((dir: 'up' | 'down' | 'left' | 'right') => void) | null>;
   onMove?: (movesCount: number) => void;
@@ -33,6 +34,7 @@ export const MazeCanvas: React.FC<MazeCanvasProps> = ({
   theme,
   movementMode,
   speedSetting = 'normal',
+  playerSpeed,
   showHint = false,
   controllerRef,
   onMove,
@@ -55,6 +57,8 @@ export const MazeCanvas: React.FC<MazeCanvasProps> = ({
   const touchHasMovedRef = useRef<boolean>(false);
   const speedSettingRef = useRef<'relaxed' | 'normal' | 'fast'>(speedSetting);
   speedSettingRef.current = speedSetting;
+  const playerSpeedRef = useRef<number | undefined>(playerSpeed);
+  playerSpeedRef.current = playerSpeed;
 
   // Floating sub-pixel head position of the glowing light beam
   const floatingPosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
@@ -441,90 +445,170 @@ export const MazeCanvas: React.FC<MazeCanvasProps> = ({
   };
 
   // Pre-render static maze walls and corridors to Offscreen Canvas (eliminates wall redraw latency)
+  // Pre-render static maze walls and corridors to Offscreen Canvas (eliminates wall redraw latency)
   const buildOffscreenMaze = (width: number, height: number, dpr: number) => {
     const off = document.createElement('canvas');
-    off.width = width * dpr;
-    off.height = height * dpr;
+    off.width = Math.round(width * dpr);
+    off.height = Math.round(height * dpr);
     const ctx = off.getContext('2d');
     if (!ctx) return off;
 
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
     ctx.scale(dpr, dpr);
 
-    // Deep dark background
-    ctx.fillStyle = theme.bgDark;
+    // Deep luminous ambient background with subtle radial vignette
+    const bgGrad = ctx.createRadialGradient(
+      width / 2,
+      height / 2,
+      Math.min(width, height) * 0.1,
+      width / 2,
+      height / 2,
+      Math.hypot(width, height) * 0.65
+    );
+    bgGrad.addColorStop(0, theme.bgCard);
+    bgGrad.addColorStop(1, theme.bgDark);
+    ctx.fillStyle = bgGrad;
     ctx.fillRect(0, 0, width, height);
 
     const pad = 24;
     const renderW = Math.max(10, width - pad * 2);
     const renderH = Math.max(10, height - pad * 2);
 
+    // Helper to draw high-definition Start Beacon
+    const drawStartBeacon = (sx: number, sy: number, radius: number) => {
+      ctx.save();
+      // Outer radiant ripple
+      ctx.strokeStyle = '#38bdf8';
+      ctx.shadowColor = '#38bdf8';
+      ctx.shadowBlur = 10;
+      ctx.lineWidth = 1.8;
+      ctx.setLineDash([3, 4]);
+      ctx.beginPath();
+      ctx.arc(sx, sy, Math.max(6, radius * 0.42), 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Inner glowing core
+      ctx.fillStyle = '#0ea5e9';
+      ctx.beginPath();
+      ctx.arc(sx, sy, Math.max(3, radius * 0.2), 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#f0f9ff';
+      ctx.beginPath();
+      ctx.arc(sx, sy, Math.max(1.5, radius * 0.1), 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    };
+
+    // Helper to draw high-definition Exit Portal
+    const drawExitPortal = (ex: number, ey: number, radius: number) => {
+      ctx.save();
+      ctx.shadowColor = theme.exitGlow;
+      ctx.shadowBlur = 16;
+      ctx.fillStyle = theme.exitGlow;
+      ctx.beginPath();
+      ctx.arc(ex, ey, Math.max(6, radius * 0.36), 0, Math.PI * 2);
+      ctx.fill();
+
+      // Outer portal ring
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(ex, ey, Math.max(4, radius * 0.24), 0, Math.PI * 2);
+      ctx.stroke();
+
+      // White-hot core
+      ctx.fillStyle = theme.exitCore;
+      ctx.beginPath();
+      ctx.arc(ex, ey, Math.max(2.5, radius * 0.16), 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    };
+
     // 1. SQUARE GRID & SILHOUETTE
     if (graph.geometry === 'square' || graph.geometry === 'silhouette') {
       const cellW = renderW / graph.width;
       const cellH = renderH / graph.height;
 
-      // Draw corridor floor
-      ctx.fillStyle = theme.pathColor;
+      // Draw corridor floor with refined subtle cell inlay definition
       graph.nodes.forEach((node) => {
         const x0 = pad + node.coord.x * cellW;
         const y0 = pad + node.coord.y * cellH;
+
+        // Base corridor floor
+        ctx.fillStyle = theme.pathColor;
         ctx.fillRect(x0, y0, cellW, cellH);
+
+        // High-definition cell floor inlay
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.04)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(x0 + 1, y0 + 1, cellW - 2, cellH - 2);
       });
 
-      // Exit indicator
+      // Start beacon
+      const startNode = graph.nodes.get(graph.startNodeId);
+      if (startNode) {
+        const sx = pad + (startNode.coord.x + 0.5) * cellW;
+        const sy = pad + (startNode.coord.y + 0.5) * cellH;
+        drawStartBeacon(sx, sy, Math.min(cellW, cellH));
+      }
+
+      // Exit portal
       const exitNode = graph.nodes.get(graph.exitNodeId);
       if (exitNode) {
         const exitX = pad + (exitNode.coord.x + 0.5) * cellW;
         const exitY = pad + (exitNode.coord.y + 0.5) * cellH;
-        ctx.save();
-        ctx.shadowColor = theme.exitGlow;
-        ctx.shadowBlur = 14;
-        ctx.fillStyle = theme.exitGlow;
-        ctx.beginPath();
-        ctx.arc(exitX, exitY, Math.max(5, cellW * 0.3), 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = theme.exitCore;
-        ctx.beginPath();
-        ctx.arc(exitX, exitY, Math.max(2.5, cellW * 0.15), 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
+        drawExitPortal(exitX, exitY, Math.min(cellW, cellH));
       }
 
-      // Draw solid walls
+      // Collect wall path segments
+      const wallThickness = Math.max(2.8, Math.min(6.5, cellW * 0.13));
+      const buildSquareWallPaths = () => {
+        ctx.beginPath();
+        graph.nodes.forEach((node) => {
+          const x = node.coord.x;
+          const y = node.coord.y;
+          const x0 = pad + x * cellW;
+          const x1 = x0 + cellW;
+          const y0 = pad + y * cellH;
+          const y1 = y0 + cellH;
+
+          if (!node.neighbors.includes(`${x},${y - 1}`)) {
+            ctx.moveTo(x0, y0);
+            ctx.lineTo(x1, y0);
+          }
+          if (!node.neighbors.includes(`${x - 1},${y}`)) {
+            ctx.moveTo(x0, y0);
+            ctx.lineTo(x0, y1);
+          }
+          if (!graph.nodes.has(`${x},${y + 1}`)) {
+            ctx.moveTo(x0, y1);
+            ctx.lineTo(x1, y1);
+          }
+          if (!graph.nodes.has(`${x + 1},${y}`)) {
+            ctx.moveTo(x1, y0);
+            ctx.lineTo(x1, y1);
+          }
+        });
+      };
+
+      // Pass 1: Neon Structural Wall with atmospheric glow
       ctx.save();
-      const wallThickness = Math.max(2.5, Math.min(6, cellW * 0.12));
       ctx.lineWidth = wallThickness;
       ctx.lineCap = 'round';
       ctx.strokeStyle = theme.wallColor;
       ctx.shadowColor = theme.wallColor;
-      ctx.shadowBlur = 4;
-      ctx.beginPath();
+      ctx.shadowBlur = 5;
+      buildSquareWallPaths();
+      ctx.stroke();
 
-      graph.nodes.forEach((node) => {
-        const x = node.coord.x;
-        const y = node.coord.y;
-        const x0 = pad + x * cellW;
-        const x1 = x0 + cellW;
-        const y0 = pad + y * cellH;
-        const y1 = y0 + cellH;
-
-        if (!node.neighbors.includes(`${x},${y - 1}`)) {
-          ctx.moveTo(x0, y0);
-          ctx.lineTo(x1, y0);
-        }
-        if (!node.neighbors.includes(`${x - 1},${y}`)) {
-          ctx.moveTo(x0, y0);
-          ctx.lineTo(x0, y1);
-        }
-        if (!graph.nodes.has(`${x},${y + 1}`)) {
-          ctx.moveTo(x0, y1);
-          ctx.lineTo(x1, y1);
-        }
-        if (!graph.nodes.has(`${x + 1},${y}`)) {
-          ctx.moveTo(x1, y0);
-          ctx.lineTo(x1, y1);
-        }
-      });
+      // Pass 2: High-Definition White-Hot Center Ridge for razor-sharp definition
+      ctx.lineWidth = Math.max(1.2, wallThickness * 0.28);
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.75)';
+      ctx.shadowBlur = 0;
+      buildSquareWallPaths();
       ctx.stroke();
       ctx.restore();
     }
@@ -542,11 +626,45 @@ export const MazeCanvas: React.FC<MazeCanvasProps> = ({
       ctx.arc(center.x, center.y, maxRadius, 0, Math.PI * 2);
       ctx.fill();
 
+      // Concentric guide track rings
+      ctx.save();
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.04)';
+      ctx.lineWidth = 1;
+      for (let r = 1; r <= numRings; r++) {
+        ctx.beginPath();
+        ctx.arc(center.x, center.y, (r + 0.5) * ringWidth, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      ctx.restore();
+
       // Dark central sanctuary hub
       ctx.fillStyle = theme.bgDark;
       ctx.beginPath();
       ctx.arc(center.x, center.y, 0.5 * ringWidth, 0, Math.PI * 2);
       ctx.fill();
+
+      // Central Hub Star Glyph
+      ctx.save();
+      ctx.fillStyle = theme.wallColor;
+      ctx.shadowColor = theme.wallColor;
+      ctx.shadowBlur = 6;
+      ctx.beginPath();
+      ctx.arc(center.x, center.y, Math.max(3, ringWidth * 0.16), 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+
+      // Start beacon at innermost ring (r0_s0)
+      const startNode = graph.nodes.get(graph.startNodeId);
+      if (startNode) {
+        const r = startNode.coord.ring ?? 0;
+        const s = startNode.coord.sector ?? 0;
+        const angleStep = (Math.PI * 2) / numSectors;
+        const rMid = (r + 1.0) * ringWidth;
+        const angleMid = (s + 0.5) * angleStep - Math.PI / 2;
+        const sx = center.x + Math.cos(angleMid) * rMid;
+        const sy = center.y + Math.sin(angleMid) * rMid;
+        drawStartBeacon(sx, sy, ringWidth);
+      }
 
       // Exit indicator
       const exitNode = graph.nodes.get(graph.exitNodeId);
@@ -558,36 +676,25 @@ export const MazeCanvas: React.FC<MazeCanvasProps> = ({
         const angleMid = (s + 0.5) * angleStep - Math.PI / 2;
         const ex = center.x + Math.cos(angleMid) * rMid;
         const ey = center.y + Math.sin(angleMid) * rMid;
-
-        ctx.save();
-        ctx.shadowColor = theme.exitGlow;
-        ctx.shadowBlur = 14;
-        ctx.fillStyle = theme.exitGlow;
-        ctx.beginPath();
-        ctx.arc(ex, ey, Math.max(5, ringWidth * 0.3), 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = theme.exitCore;
-        ctx.beginPath();
-        ctx.arc(ex, ey, Math.max(2.5, ringWidth * 0.15), 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
+        drawExitPortal(ex, ey, ringWidth);
       }
 
-      // Draw crisp circular walls (discrete subpaths to prevent any stray connecting chords)
+      // Draw crisp circular walls (Pass 1: Neon wall + Pass 2: Sharp Ridge)
+      const wallThickness = Math.max(2.8, Math.min(5.5, ringWidth * 0.13));
+      const angleStep = (Math.PI * 2) / numSectors;
+
+      // Pass 1: Neon structural wall
       ctx.save();
-      const wallThickness = Math.max(2.5, Math.min(5, ringWidth * 0.12));
       ctx.lineWidth = wallThickness;
       ctx.lineCap = 'round';
       ctx.strokeStyle = theme.wallColor;
       ctx.shadowColor = theme.wallColor;
-      ctx.shadowBlur = 3;
+      ctx.shadowBlur = 4;
 
       // Inner boundary circle around central hub
       ctx.beginPath();
       ctx.arc(center.x, center.y, 0.5 * ringWidth, 0, Math.PI * 2);
       ctx.stroke();
-
-      const angleStep = (Math.PI * 2) / numSectors;
 
       graph.nodes.forEach((node) => {
         const r = node.coord.ring ?? 0;
@@ -597,9 +704,8 @@ export const MazeCanvas: React.FC<MazeCanvasProps> = ({
         const rInner = (r + 0.5) * ringWidth;
         const rOuter = (r + 1.5) * ringWidth;
 
-        // 1. Outer Arc Wall: draw if not connected outward
+        // Outer Arc Wall
         if (r === numRings - 1) {
-          // Outermost boundary of the maze: leave an open gate at the exit node
           if (node.id !== graph.exitNodeId) {
             ctx.beginPath();
             ctx.arc(center.x, center.y, rOuter, a0, a1);
@@ -614,7 +720,7 @@ export const MazeCanvas: React.FC<MazeCanvasProps> = ({
           }
         }
 
-        // 2. Radial Spoke Wall at angle a0 (between this sector and counter-clockwise neighbor)
+        // Radial Spoke Wall
         const prevS = (s - 1 + numSectors) % numSectors;
         const prevId = `r${r}_s${prevS}`;
         if (!node.neighbors.includes(prevId)) {
@@ -625,6 +731,47 @@ export const MazeCanvas: React.FC<MazeCanvasProps> = ({
         }
       });
 
+      // Pass 2: High-definition white ridge
+      ctx.lineWidth = Math.max(1.2, wallThickness * 0.28);
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.75)';
+      ctx.shadowBlur = 0;
+
+      ctx.beginPath();
+      ctx.arc(center.x, center.y, 0.5 * ringWidth, 0, Math.PI * 2);
+      ctx.stroke();
+
+      graph.nodes.forEach((node) => {
+        const r = node.coord.ring ?? 0;
+        const s = node.coord.sector ?? 0;
+        const a0 = s * angleStep - Math.PI / 2;
+        const a1 = (s + 1) * angleStep - Math.PI / 2;
+        const rInner = (r + 0.5) * ringWidth;
+        const rOuter = (r + 1.5) * ringWidth;
+
+        if (r === numRings - 1) {
+          if (node.id !== graph.exitNodeId) {
+            ctx.beginPath();
+            ctx.arc(center.x, center.y, rOuter, a0, a1);
+            ctx.stroke();
+          }
+        } else {
+          const outerId = `r${r + 1}_s${s}`;
+          if (!node.neighbors.includes(outerId)) {
+            ctx.beginPath();
+            ctx.arc(center.x, center.y, rOuter, a0, a1);
+            ctx.stroke();
+          }
+        }
+
+        const prevS = (s - 1 + numSectors) % numSectors;
+        const prevId = `r${r}_s${prevS}`;
+        if (!node.neighbors.includes(prevId)) {
+          ctx.beginPath();
+          ctx.moveTo(center.x + Math.cos(a0) * rInner, center.y + Math.sin(a0) * rInner);
+          ctx.lineTo(center.x + Math.cos(a0) * rOuter, center.y + Math.sin(a0) * rOuter);
+          ctx.stroke();
+        }
+      });
       ctx.restore();
     }
 
@@ -641,69 +788,96 @@ export const MazeCanvas: React.FC<MazeCanvasProps> = ({
         return { cx, cy };
       };
 
+      // Draw corridor floor for hexagons
+      graph.nodes.forEach((node) => {
+        const { cx, cy } = getHexCenter(node.coord.x, node.coord.y);
+        ctx.fillStyle = theme.pathColor;
+        ctx.beginPath();
+        for (let i = 0; i < 6; i++) {
+          const a = (i * Math.PI) / 3;
+          const px = cx + R_hex * Math.cos(a);
+          const py = cy + R_hex * Math.sin(a);
+          if (i === 0) ctx.moveTo(px, py);
+          else ctx.lineTo(px, py);
+        }
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.04)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      });
+
+      // Start beacon
+      const startNode = graph.nodes.get(graph.startNodeId);
+      if (startNode) {
+        const { cx, cy } = getHexCenter(startNode.coord.x, startNode.coord.y);
+        drawStartBeacon(cx, cy, R_hex);
+      }
+
       // Exit indicator
       const exitNode = graph.nodes.get(graph.exitNodeId);
       if (exitNode) {
         const { cx, cy } = getHexCenter(exitNode.coord.x, exitNode.coord.y);
-        ctx.save();
-        ctx.shadowColor = theme.exitGlow;
-        ctx.shadowBlur = 14;
-        ctx.fillStyle = theme.exitGlow;
-        ctx.beginPath();
-        ctx.arc(cx, cy, Math.max(5, R_hex * 0.3), 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = theme.exitCore;
-        ctx.beginPath();
-        ctx.arc(cx, cy, Math.max(2.5, R_hex * 0.15), 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
+        drawExitPortal(cx, cy, R_hex);
       }
 
       // Walls
+      const wallThickness = Math.max(2.8, Math.min(5.5, R_hex * 0.13));
+      const buildHexWalls = () => {
+        ctx.beginPath();
+        graph.nodes.forEach((node) => {
+          const { cx, cy } = getHexCenter(node.coord.x, node.coord.y);
+          const isEven = node.coord.x % 2 === 0;
+
+          const verts: { cx: number; cy: number }[] = [];
+          for (let i = 0; i < 6; i++) {
+            const a = (i * Math.PI) / 3;
+            verts.push({ cx: cx + R_hex * Math.cos(a), cy: cy + R_hex * Math.sin(a) });
+          }
+
+          const neighborsByEdge = isEven
+            ? [
+                `${node.coord.x + 1},${node.coord.y}`,
+                `${node.coord.x},${node.coord.y + 1}`,
+                `${node.coord.x - 1},${node.coord.y}`,
+                `${node.coord.x - 1},${node.coord.y - 1}`,
+                `${node.coord.x},${node.coord.y - 1}`,
+                `${node.coord.x + 1},${node.coord.y - 1}`,
+              ]
+            : [
+                `${node.coord.x + 1},${node.coord.y + 1}`,
+                `${node.coord.x},${node.coord.y + 1}`,
+                `${node.coord.x - 1},${node.coord.y + 1}`,
+                `${node.coord.x - 1},${node.coord.y}`,
+                `${node.coord.x},${node.coord.y - 1}`,
+                `${node.coord.x + 1},${node.coord.y}`,
+              ];
+
+          for (let i = 0; i < 6; i++) {
+            if (!node.neighbors.includes(neighborsByEdge[i])) {
+              const v1 = verts[i];
+              const v2 = verts[(i + 1) % 6];
+              ctx.moveTo(v1.cx, v1.cy);
+              ctx.lineTo(v2.cx, v2.cy);
+            }
+          }
+        });
+      };
+
       ctx.save();
-      ctx.lineWidth = Math.max(2.5, Math.min(5, R_hex * 0.12));
+      ctx.lineWidth = wallThickness;
+      ctx.lineCap = 'round';
       ctx.strokeStyle = theme.wallColor;
       ctx.shadowColor = theme.wallColor;
       ctx.shadowBlur = 4;
-      ctx.beginPath();
+      buildHexWalls();
+      ctx.stroke();
 
-      graph.nodes.forEach((node) => {
-        const { cx, cy } = getHexCenter(node.coord.x, node.coord.y);
-        const isEven = node.coord.x % 2 === 0;
-
-        const verts: { cx: number; cy: number }[] = [];
-        for (let i = 0; i < 6; i++) {
-          const a = (i * Math.PI) / 3;
-          verts.push({ cx: cx + R_hex * Math.cos(a), cy: cy + R_hex * Math.sin(a) });
-        }
-
-        const neighborsByEdge = isEven
-          ? [
-              `${node.coord.x + 1},${node.coord.y}`,
-              `${node.coord.x},${node.coord.y + 1}`,
-              `${node.coord.x - 1},${node.coord.y}`,
-              `${node.coord.x - 1},${node.coord.y - 1}`,
-              `${node.coord.x},${node.coord.y - 1}`,
-              `${node.coord.x + 1},${node.coord.y - 1}`,
-            ]
-          : [
-              `${node.coord.x + 1},${node.coord.y + 1}`,
-              `${node.coord.x},${node.coord.y + 1}`,
-              `${node.coord.x - 1},${node.coord.y + 1}`,
-              `${node.coord.x - 1},${node.coord.y}`,
-              `${node.coord.x},${node.coord.y - 1}`,
-              `${node.coord.x + 1},${node.coord.y}`,
-            ];
-
-        for (let i = 0; i < 6; i++) {
-          if (!node.neighbors.includes(neighborsByEdge[i])) {
-            const v1 = verts[i];
-            const v2 = verts[(i + 1) % 6];
-            ctx.moveTo(v1.cx, v1.cy);
-            ctx.lineTo(v2.cx, v2.cy);
-          }
-        }
-      });
+      ctx.lineWidth = Math.max(1.2, wallThickness * 0.28);
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.75)';
+      ctx.shadowBlur = 0;
+      buildHexWalls();
       ctx.stroke();
       ctx.restore();
     }
@@ -713,33 +887,7 @@ export const MazeCanvas: React.FC<MazeCanvasProps> = ({
       const cellW = renderW / graph.width;
       const cellH = renderH / graph.height;
 
-      // Exit indicator
-      const exitNode = graph.nodes.get(graph.exitNodeId);
-      if (exitNode) {
-        const ex = pad + (exitNode.coord.x + 0.5) * cellW;
-        const ey = pad + (exitNode.coord.y + 0.5) * cellH;
-        ctx.save();
-        ctx.shadowColor = theme.exitGlow;
-        ctx.shadowBlur = 14;
-        ctx.fillStyle = theme.exitGlow;
-        ctx.beginPath();
-        ctx.arc(ex, ey, Math.max(5, cellW * 0.28), 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = theme.exitCore;
-        ctx.beginPath();
-        ctx.arc(ex, ey, Math.max(2.5, cellW * 0.14), 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
-      }
-
-      // Walls
-      ctx.save();
-      ctx.lineWidth = Math.max(2.5, Math.min(5, cellW * 0.12));
-      ctx.strokeStyle = theme.wallColor;
-      ctx.shadowColor = theme.wallColor;
-      ctx.shadowBlur = 4;
-      ctx.beginPath();
-
+      // Draw corridor floor for triangular
       graph.nodes.forEach((node) => {
         const x = node.coord.x;
         const y = node.coord.y;
@@ -748,37 +896,100 @@ export const MazeCanvas: React.FC<MazeCanvasProps> = ({
         const y0 = pad + y * cellH;
         const y1 = y0 + cellH;
         const isUp = (x + y) % 2 === 0;
+        const cx = (x0 + x1) / 2;
 
+        ctx.fillStyle = theme.pathColor;
+        ctx.beginPath();
         if (isUp) {
-          const cx = (x0 + x1) / 2;
-          if (!node.neighbors.includes(`${x - 1},${y}`)) {
-            ctx.moveTo(cx, y0);
-            ctx.lineTo(x0, y1);
-          }
-          if (!node.neighbors.includes(`${x + 1},${y}`)) {
-            ctx.moveTo(cx, y0);
-            ctx.lineTo(x1, y1);
-          }
-          if (!node.neighbors.includes(`${x},${y + 1}`)) {
-            ctx.moveTo(x0, y1);
-            ctx.lineTo(x1, y1);
-          }
+          ctx.moveTo(cx, y0);
+          ctx.lineTo(x0, y1);
+          ctx.lineTo(x1, y1);
         } else {
-          const cx = (x0 + x1) / 2;
-          if (!node.neighbors.includes(`${x - 1},${y}`)) {
-            ctx.moveTo(x0, y0);
-            ctx.lineTo(cx, y1);
-          }
-          if (!node.neighbors.includes(`${x + 1},${y}`)) {
-            ctx.moveTo(x1, y0);
-            ctx.lineTo(cx, y1);
-          }
-          if (!node.neighbors.includes(`${x},${y - 1}`)) {
-            ctx.moveTo(x0, y0);
-            ctx.lineTo(x1, y0);
-          }
+          ctx.moveTo(x0, y0);
+          ctx.lineTo(x1, y0);
+          ctx.lineTo(cx, y1);
         }
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.04)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
       });
+
+      // Start beacon
+      const startNode = graph.nodes.get(graph.startNodeId);
+      if (startNode) {
+        const sx = pad + (startNode.coord.x + 0.5) * cellW;
+        const sy = pad + (startNode.coord.y + 0.5) * cellH;
+        drawStartBeacon(sx, sy, Math.min(cellW, cellH));
+      }
+
+      // Exit indicator
+      const exitNode = graph.nodes.get(graph.exitNodeId);
+      if (exitNode) {
+        const ex = pad + (exitNode.coord.x + 0.5) * cellW;
+        const ey = pad + (exitNode.coord.y + 0.5) * cellH;
+        drawExitPortal(ex, ey, Math.min(cellW, cellH));
+      }
+
+      // Walls
+      const wallThickness = Math.max(2.8, Math.min(5.5, cellW * 0.13));
+      const buildTriWalls = () => {
+        ctx.beginPath();
+        graph.nodes.forEach((node) => {
+          const x = node.coord.x;
+          const y = node.coord.y;
+          const x0 = pad + x * cellW;
+          const x1 = x0 + cellW;
+          const y0 = pad + y * cellH;
+          const y1 = y0 + cellH;
+          const isUp = (x + y) % 2 === 0;
+          const cx = (x0 + x1) / 2;
+
+          if (isUp) {
+            if (!node.neighbors.includes(`${x - 1},${y}`)) {
+              ctx.moveTo(cx, y0);
+              ctx.lineTo(x0, y1);
+            }
+            if (!node.neighbors.includes(`${x + 1},${y}`)) {
+              ctx.moveTo(cx, y0);
+              ctx.lineTo(x1, y1);
+            }
+            if (!node.neighbors.includes(`${x},${y + 1}`)) {
+              ctx.moveTo(x0, y1);
+              ctx.lineTo(x1, y1);
+            }
+          } else {
+            if (!node.neighbors.includes(`${x - 1},${y}`)) {
+              ctx.moveTo(x0, y0);
+              ctx.lineTo(cx, y1);
+            }
+            if (!node.neighbors.includes(`${x + 1},${y}`)) {
+              ctx.moveTo(x1, y0);
+              ctx.lineTo(cx, y1);
+            }
+            if (!node.neighbors.includes(`${x},${y - 1}`)) {
+              ctx.moveTo(x0, y0);
+              ctx.lineTo(x1, y0);
+            }
+          }
+        });
+      };
+
+      ctx.save();
+      ctx.lineWidth = wallThickness;
+      ctx.lineCap = 'round';
+      ctx.strokeStyle = theme.wallColor;
+      ctx.shadowColor = theme.wallColor;
+      ctx.shadowBlur = 4;
+      buildTriWalls();
+      ctx.stroke();
+
+      ctx.lineWidth = Math.max(1.2, wallThickness * 0.28);
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.75)';
+      ctx.shadowBlur = 0;
+      buildTriWalls();
       ctx.stroke();
       ctx.restore();
     }
@@ -810,13 +1021,20 @@ export const MazeCanvas: React.FC<MazeCanvasProps> = ({
       const rect = canvas.getBoundingClientRect();
       const width = rect.width;
       const height = rect.height;
-      const dpr = window.devicePixelRatio || 1;
 
-      if (canvas.width !== width * dpr || canvas.height !== height * dpr) {
-        canvas.width = width * dpr;
-        canvas.height = height * dpr;
+      // HiDPI 2x+ supersampling for razor-sharp board resolution & definition
+      const dpr = Math.max(window.devicePixelRatio || 1, 2);
+      const targetW = Math.round(width * dpr);
+      const targetH = Math.round(height * dpr);
+
+      if (canvas.width !== targetW || canvas.height !== targetH) {
+        canvas.width = targetW;
+        canvas.height = targetH;
         offscreenCanvasRef.current = null; // Rebuild static cache on resize
       }
+
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
 
       // Rebuild offscreen maze cache if needed
       if (!offscreenCanvasRef.current) {
@@ -826,14 +1044,15 @@ export const MazeCanvas: React.FC<MazeCanvasProps> = ({
       // 1. ADVANCE MOVEMENT PHYSICS WITH SUB-PIXEL INTERPOLATION
       const anim = animStateRef.current;
       if (anim.isMoving) {
-        // Graceful, controllable glide speed calibrated for calm, relaxing maze exploration:
-        // relaxed: 6.0 cells/sec (~166ms/cell), normal: 8.5 cells/sec (~118ms/cell), fast: 11.5 cells/sec (~87ms/cell)
+        // Controllable glide speed calibrated from playerSpeed (cells/sec) or preset
         const GLIDE_SPEED =
-          speedSettingRef.current === 'relaxed'
-            ? 6.0
+          playerSpeedRef.current !== undefined
+            ? playerSpeedRef.current
+            : speedSettingRef.current === 'relaxed'
+            ? 6.5
             : speedSettingRef.current === 'fast'
-            ? 11.5
-            : 8.5;
+            ? 14.0
+            : 10.0;
         anim.progress += GLIDE_SPEED * dt;
 
         if (anim.progress >= 1.0) {
@@ -1138,7 +1357,7 @@ export const MazeCanvas: React.FC<MazeCanvasProps> = ({
     >
       <canvas
         ref={canvasRef}
-        className="w-full h-full max-w-[580px] max-h-[580px] sm:max-w-[680px] sm:max-h-[680px] lg:max-w-[760px] lg:max-h-[760px] aspect-square rounded-3xl cursor-pointer touch-none shadow-2xl transition-all"
+        className="w-full h-full max-w-[620px] max-h-[620px] sm:max-w-[720px] sm:max-h-[720px] lg:max-w-[800px] lg:max-h-[800px] aspect-square rounded-3xl cursor-pointer touch-none shadow-2xl shadow-black/90 ring-1 ring-white/10 border border-slate-700/60 transition-all bg-slate-950"
         onClick={(e) => {
           // Direct tap steering relative to player orb
           const rect = e.currentTarget.getBoundingClientRect();

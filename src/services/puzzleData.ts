@@ -279,9 +279,9 @@ export function generateInitialLevels(): PuzzleDefinition[] {
         height = width;
       }
 
-      // Constraints for special modes
-      const timeLimit = mode === 'time_challenge' ? Math.max(20, 45 - diffIndex * 4) : undefined;
-      const moveLimit = mode === 'restricted_moves' ? Math.max(15, 30 + diffIndex * 8) : undefined;
+      // Generous, realistically achievable constraints for special modes
+      const timeLimit = mode === 'time_challenge' ? 60 + diffIndex * 45 : undefined;
+      const moveLimit = mode === 'restricted_moves' ? 35 + diffIndex * 22 : undefined;
 
       levels.push({
         id: `lvl_${cIdx + 1}_${lvl}`,
@@ -332,7 +332,7 @@ export function getDailyChallenge(dateStr?: string): PuzzleDefinition {
     difficulty: diff,
     mode,
     seed,
-    timeLimit: mode === 'time_challenge' ? 45 : undefined,
+    timeLimit: mode === 'time_challenge' ? 120 : undefined,
     basePoints: BASE_POINTS[diff] * 2, // Double points for daily challenge
   };
 }
@@ -355,7 +355,7 @@ export function getWeeklyChallenge(): PuzzleDefinition {
     difficulty: 'expert',
     mode: 'intertwined',
     seed,
-    timeLimit: 120,
+    timeLimit: 240,
     basePoints: 300,
   };
 }

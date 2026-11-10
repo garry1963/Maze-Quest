@@ -55,6 +55,7 @@ export function getLocalProfile(): UserProfileData {
     currentLevel: 1,
     selectedTheme: 'midnight_blue',
     movementMode: 'continuous',
+    playerSpeed: 10.0,
     isGuest: true,
     role: 'player',
   };

@@ -20,6 +20,10 @@ import {
   ChevronLeft,
   ChevronRight,
   Gauge,
+  Sliders,
+  Zap,
+  Plus,
+  Minus,
 } from 'lucide-react';
 import { MazeCanvas } from './MazeCanvas';
 import { generateMaze } from '../../services/mazeEngine';
@@ -42,7 +46,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({ puzzle, onBack }) => {
     playPuzzle,
     setCurrentScreen,
   } = useGame();
-  const { profile, updateMovementMode } = useAuth();
+  const { profile, updateMovementMode, updatePlayerSpeed } = useAuth();
 
   // Timer & Moves state
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
@@ -58,7 +62,15 @@ export const GameScreen: React.FC<GameScreenProps> = ({ puzzle, onBack }) => {
     }
     return false;
   });
-  const [speedSetting, setSpeedSetting] = useState<'relaxed' | 'normal' | 'fast'>('normal');
+  const [playerSpeed, setPlayerSpeed] = useState<number>(profile.playerSpeed ?? 10.0);
+  const [showSpeedControls, setShowSpeedControls] = useState(false);
+
+  const handleSpeedChange = (newSpeed: number) => {
+    const clamped = Math.max(4.0, Math.min(22.0, Math.round(newSpeed * 10) / 10));
+    setPlayerSpeed(clamped);
+    updatePlayerSpeed(clamped);
+  };
+
   const controllerRef = useRef<((dir: 'up' | 'down' | 'left' | 'right') => void) | null>(null);
 
   // Victory modal state
@@ -279,7 +291,8 @@ export const GameScreen: React.FC<GameScreenProps> = ({ puzzle, onBack }) => {
           mode={puzzle.mode}
           theme={activeTheme}
           movementMode={profile.movementMode}
-          speedSetting={speedSetting}
+          speedSetting={playerSpeed <= 7.0 ? 'relaxed' : playerSpeed >= 13.0 ? 'fast' : 'normal'}
+          playerSpeed={playerSpeed}
           showHint={showHint}
           controllerRef={controllerRef}
           onMove={handleMove}
@@ -289,49 +302,124 @@ export const GameScreen: React.FC<GameScreenProps> = ({ puzzle, onBack }) => {
           }}
         />
 
-        {/* Tablet / Touchscreen Virtual Thumb D-Pad */}
+        {/* Tablet / Touchscreen Virtual Thumb D-Pad with Quick Speed Steppers */}
         {showDPad && (
-          <div className="mt-3 flex flex-col items-center gap-1.5 select-none touch-manipulation">
+          <div className="mt-3 flex items-center justify-center gap-3 sm:gap-4 select-none touch-manipulation">
+            {/* Quick Slower Button */}
             <button
-              onClick={() => controllerRef.current?.('up')}
-              className="w-16 h-12 md:w-20 md:h-14 rounded-2xl bg-slate-800/90 active:bg-sky-500/20 active:border-sky-400 active:scale-90 border border-slate-700/80 flex items-center justify-center text-white shadow-xl shadow-black/50 transition-all touch-manipulation group"
-              title={puzzle.geometry === 'circular' ? 'Move Inward (towards center)' : 'Move Up'}
+              onClick={() => handleSpeedChange(playerSpeed - 2.0)}
+              className="w-12 h-12 rounded-2xl bg-slate-800/80 active:scale-90 border border-slate-700/80 flex flex-col items-center justify-center text-slate-300 hover:text-white shadow-lg active:bg-slate-700 transition-all"
+              title="Slow down player movement"
             >
-              <ChevronUp className="w-7 h-7 text-sky-400 group-active:text-sky-200" />
+              <Minus className="w-4 h-4 text-emerald-400" />
+              <span className="text-[9px] font-mono text-slate-400 font-bold">-Spd</span>
             </button>
-            <div className="flex items-center gap-2">
+
+            {/* D-Pad Buttons */}
+            <div className="flex flex-col items-center gap-1.5">
               <button
-                onClick={() => controllerRef.current?.('left')}
+                onClick={() => controllerRef.current?.('up')}
                 className="w-16 h-12 md:w-20 md:h-14 rounded-2xl bg-slate-800/90 active:bg-sky-500/20 active:border-sky-400 active:scale-90 border border-slate-700/80 flex items-center justify-center text-white shadow-xl shadow-black/50 transition-all touch-manipulation group"
-                title={puzzle.geometry === 'circular' ? 'Move Counter-Clockwise' : 'Move Left'}
+                title={puzzle.geometry === 'circular' ? 'Move Inward (towards center)' : 'Move Up'}
               >
-                <ChevronLeft className="w-7 h-7 text-sky-400 group-active:text-sky-200" />
+                <ChevronUp className="w-7 h-7 text-sky-400 group-active:text-sky-200" />
               </button>
-              <div className="w-12 h-12 rounded-2xl bg-slate-900/90 border border-slate-800 flex items-center justify-center text-slate-500 text-[11px] font-bold tracking-wider">
-                PAD
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => controllerRef.current?.('left')}
+                  className="w-16 h-12 md:w-20 md:h-14 rounded-2xl bg-slate-800/90 active:bg-sky-500/20 active:border-sky-400 active:scale-90 border border-slate-700/80 flex items-center justify-center text-white shadow-xl shadow-black/50 transition-all touch-manipulation group"
+                  title={puzzle.geometry === 'circular' ? 'Move Counter-Clockwise' : 'Move Left'}
+                >
+                  <ChevronLeft className="w-7 h-7 text-sky-400 group-active:text-sky-200" />
+                </button>
+                <div className="w-12 h-12 rounded-2xl bg-slate-900/90 border border-slate-800 flex items-center justify-center text-slate-500 text-[11px] font-bold tracking-wider">
+                  PAD
+                </div>
+                <button
+                  onClick={() => controllerRef.current?.('right')}
+                  className="w-16 h-12 md:w-20 md:h-14 rounded-2xl bg-slate-800/90 active:bg-sky-500/20 active:border-sky-400 active:scale-90 border border-slate-700/80 flex items-center justify-center text-white shadow-xl shadow-black/50 transition-all touch-manipulation group"
+                  title={puzzle.geometry === 'circular' ? 'Move Clockwise' : 'Move Right'}
+                >
+                  <ChevronRight className="w-7 h-7 text-sky-400 group-active:text-sky-200" />
+                </button>
               </div>
               <button
-                onClick={() => controllerRef.current?.('right')}
+                onClick={() => controllerRef.current?.('down')}
                 className="w-16 h-12 md:w-20 md:h-14 rounded-2xl bg-slate-800/90 active:bg-sky-500/20 active:border-sky-400 active:scale-90 border border-slate-700/80 flex items-center justify-center text-white shadow-xl shadow-black/50 transition-all touch-manipulation group"
-                title={puzzle.geometry === 'circular' ? 'Move Clockwise' : 'Move Right'}
+                title={puzzle.geometry === 'circular' ? 'Move Outward (towards perimeter)' : 'Move Down'}
               >
-                <ChevronRight className="w-7 h-7 text-sky-400 group-active:text-sky-200" />
+                <ChevronDown className="w-7 h-7 text-sky-400 group-active:text-sky-200" />
               </button>
             </div>
+
+            {/* Quick Faster Button */}
             <button
-              onClick={() => controllerRef.current?.('down')}
-              className="w-16 h-12 md:w-20 md:h-14 rounded-2xl bg-slate-800/90 active:bg-sky-500/20 active:border-sky-400 active:scale-90 border border-slate-700/80 flex items-center justify-center text-white shadow-xl shadow-black/50 transition-all touch-manipulation group"
-              title={puzzle.geometry === 'circular' ? 'Move Outward (towards perimeter)' : 'Move Down'}
+              onClick={() => handleSpeedChange(playerSpeed + 2.0)}
+              className="w-12 h-12 rounded-2xl bg-slate-800/80 active:scale-90 border border-slate-700/80 flex flex-col items-center justify-center text-slate-300 hover:text-white shadow-lg active:bg-slate-700 transition-all"
+              title="Speed up player movement"
             >
-              <ChevronDown className="w-7 h-7 text-sky-400 group-active:text-sky-200" />
+              <Plus className="w-4 h-4 text-emerald-400" />
+              <span className="text-[9px] font-mono text-slate-400 font-bold">+Spd</span>
             </button>
           </div>
         )}
       </main>
 
       {/* Bottom Controls Bar */}
-      <footer className="w-full max-w-4xl flex items-center justify-between py-3 border-t border-slate-800/80 mt-2">
-        {/* Mode selector, Speed toggle & D-pad switch */}
+      <footer className="relative w-full max-w-4xl flex items-center justify-between py-3 border-t border-slate-800/80 mt-2">
+        {/* Speed Adjustment Popover Card */}
+        {showSpeedControls && (
+          <div className="absolute bottom-16 left-2 sm:left-4 z-50 p-4 rounded-2xl bg-slate-900/95 border border-slate-700/80 shadow-2xl backdrop-blur-xl flex flex-col gap-3 w-72 text-white animate-in fade-in slide-in-from-bottom-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <Zap className="w-4 h-4 text-emerald-400" />
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-200">
+                  Player Speed
+                </span>
+              </div>
+              <span className="text-xs font-mono font-bold text-emerald-400 px-2 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-500/30">
+                {playerSpeed.toFixed(1)}/s
+              </span>
+            </div>
+
+            {/* Range Slider */}
+            <input
+              type="range"
+              min="4.0"
+              max="22.0"
+              step="0.5"
+              value={playerSpeed}
+              onChange={(e) => handleSpeedChange(parseFloat(e.target.value))}
+              className="w-full accent-emerald-400 cursor-pointer h-2 bg-slate-800 rounded-lg"
+            />
+
+            {/* Preset Buttons */}
+            <div className="grid grid-cols-5 gap-1 pt-1">
+              {[
+                { label: 'Slow', val: 5.0, icon: '🐢' },
+                { label: 'Relax', val: 7.5, icon: '🌿' },
+                { label: 'Norm', val: 10.0, icon: '⚡' },
+                { label: 'Fast', val: 14.0, icon: '🚀' },
+                { label: 'Hyper', val: 19.0, icon: '⚡⚡' },
+              ].map((p) => (
+                <button
+                  key={p.label}
+                  onClick={() => handleSpeedChange(p.val)}
+                  className={`py-1.5 rounded-lg text-[10px] font-semibold border flex flex-col items-center gap-0.5 transition-all ${
+                    Math.abs(playerSpeed - p.val) < 0.8
+                      ? 'bg-emerald-500/20 border-emerald-400 text-emerald-300 font-bold'
+                      : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <span className="text-xs">{p.icon}</span>
+                  <span>{p.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Movement mode selector, Speed adjustment trigger & D-pad switch */}
         <div className="flex items-center gap-2">
           <button
             onClick={() =>
@@ -348,20 +436,22 @@ export const GameScreen: React.FC<GameScreenProps> = ({ puzzle, onBack }) => {
             </span>
           </button>
 
+          {/* Speed Adjustment Popover Toggle */}
           <button
-            onClick={() => {
-              setSpeedSetting((prev) =>
-                prev === 'normal' ? 'relaxed' : prev === 'relaxed' ? 'fast' : 'normal'
-              );
-            }}
-            className="px-3 py-2 rounded-xl bg-slate-900/80 hover:bg-slate-800 border border-slate-700/60 text-xs font-medium text-slate-300 flex items-center gap-1.5 transition-all"
-            title="Toggle movement speed: Normal (8.5/s), Relaxed (6.0/s), Fast (11.5/s)"
+            onClick={() => setShowSpeedControls(!showSpeedControls)}
+            className={`px-3 py-2 rounded-xl text-xs font-medium border flex items-center gap-1.5 transition-all ${
+              showSpeedControls
+                ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-300 shadow-md shadow-emerald-500/10'
+                : 'bg-slate-900/80 hover:bg-slate-800 border-slate-700/60 text-slate-300'
+            }`}
+            title="Adjust glowing player movement glide speed"
           >
             <Gauge className="w-3.5 h-3.5 text-emerald-400" />
             <span className="text-slate-400 hidden sm:inline">Speed:</span>
-            <span className="text-emerald-400 font-semibold capitalize">
-              {speedSetting}
+            <span className="text-emerald-400 font-semibold font-mono">
+              {playerSpeed.toFixed(1)}/s
             </span>
+            <Sliders className="w-3 h-3 text-slate-400 hidden sm:inline ml-0.5" />
           </button>
 
           <button

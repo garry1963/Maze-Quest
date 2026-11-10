@@ -100,20 +100,22 @@ export const PuzzleGeneratorScreen: React.FC = () => {
     const diffName = selectedDifficulty.charAt(0).toUpperCase() + selectedDifficulty.slice(1);
     const geoName = selectedGeometry.charAt(0).toUpperCase() + selectedGeometry.slice(1);
 
-    const timeLimit =
-      selectedMode === 'time_challenge'
-        ? selectedDifficulty === 'easy'
-          ? 35
-          : selectedDifficulty === 'medium'
-          ? 50
-          : selectedDifficulty === 'hard'
-          ? 70
-          : 90
-        : undefined;
+    const baseDifficultyTime =
+      selectedDifficulty === 'easy'
+        ? 80
+        : selectedDifficulty === 'medium'
+        ? 140
+        : selectedDifficulty === 'hard'
+        ? 210
+        : 300; // 5 full minutes for expert (28x28)
+
+    // Scale generously by actual solution path distance + branch exploration buffer
+    const dynamicTime = Math.max(baseDifficultyTime, Math.round(previewStats.minMoves * 2.8 + 45));
+    const timeLimit = selectedMode === 'time_challenge' ? dynamicTime : undefined;
 
     const moveLimit =
       selectedMode === 'restricted_moves'
-        ? Math.round(previewStats.minMoves * 1.5)
+        ? Math.round(previewStats.minMoves * 2.2 + 20)
         : undefined;
 
     const puzzle: PuzzleDefinition = {

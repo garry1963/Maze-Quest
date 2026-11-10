@@ -29,6 +29,7 @@ interface AuthContextType {
   logout: () => Promise<void>;
   updateTheme: (theme: string) => void;
   updateMovementMode: (mode: 'continuous' | 'step') => void;
+  updatePlayerSpeed: (speed: number) => void;
   updateDisplayName: (name: string) => Promise<void>;
 }
 
@@ -197,6 +198,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     syncUserProfile(updated);
   };
 
+  const updatePlayerSpeed = (speed: number) => {
+    const clamped = Math.max(4.0, Math.min(24.0, speed));
+    const updated = { ...profile, playerSpeed: clamped };
+    setProfile(updated);
+    syncUserProfile(updated);
+  };
+
   const updateDisplayName = async (name: string) => {
     if (auth.currentUser) {
       await updateProfile(auth.currentUser, { displayName: name });
@@ -222,6 +230,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         logout,
         updateTheme,
         updateMovementMode,
+        updatePlayerSpeed,
         updateDisplayName,
       }}
     >

@@ -155,6 +155,7 @@ export interface UserProfileData {
   currentLevel: number;
   selectedTheme: ColorThemeId;
   movementMode: MovementMode;
+  playerSpeed?: number; // Movement glide speed in cells/sec (e.g. 5.0 to 20.0)
   isGuest?: boolean;
   role?: 'player' | 'admin';
 }
