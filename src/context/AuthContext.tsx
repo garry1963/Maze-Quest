@@ -13,7 +13,7 @@ import {
 } from 'firebase/auth';
 import { auth } from '../firebase';
 import { UserProfileData } from '../types/game';
-import { getLocalProfile, getLocalProgress, loadUserProfile, saveLocalProfile, syncUserProfile } from '../services/storage';
+import { calculateStreakUpdate, getLocalProfile, getLocalProgress, loadUserProfile, saveLocalProfile, syncUserProfile } from '../services/storage';
 
 interface AuthContextType {
   user: User | null;
@@ -31,6 +31,8 @@ interface AuthContextType {
   updateMovementMode: (mode: 'continuous' | 'step') => void;
   updatePlayerSpeed: (speed: number) => void;
   updateDisplayName: (name: string) => Promise<void>;
+  recordDailyStreak: () => void;
+  updateProfileStats: (stats: Partial<UserProfileData>) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -214,6 +216,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     syncUserProfile(updated);
   };
 
+  const recordDailyStreak = () => {
+    const updated = calculateStreakUpdate(profile);
+    setProfile(updated);
+    syncUserProfile(updated);
+  };
+
+  const updateProfileStats = (stats: Partial<UserProfileData>) => {
+    const updated = { ...profile, ...stats };
+    setProfile(updated);
+    syncUserProfile(updated);
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -232,6 +246,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         updateMovementMode,
         updatePlayerSpeed,
         updateDisplayName,
+        recordDailyStreak,
+        updateProfileStats,
       }}
     >
       {children}

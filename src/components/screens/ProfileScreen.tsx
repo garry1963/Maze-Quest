@@ -14,10 +14,13 @@ import {
   LogOut,
   ArrowLeft,
   Sparkles,
+  Flame,
+  Calendar,
 } from 'lucide-react';
 import { useGame } from '../../context/GameContext';
 import { useAuth } from '../../context/AuthContext';
 import { INITIAL_LEVELS } from '../../services/puzzleData';
+import { getStreakStatus } from '../../services/storage';
 
 export const ProfileScreen: React.FC = () => {
   const { setCurrentScreen, userProgress, totalStars, totalPoints, completedCount } = useGame();
@@ -185,6 +188,137 @@ export const ProfileScreen: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Daily Engagement & Streak Card */}
+      {(() => {
+        const streakInfo = getStreakStatus(profile);
+        const daysOfWeek = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+        const currentDayIndex = (new Date().getDay() + 6) % 7;
+
+        return (
+          <section className="p-6 rounded-3xl bg-gradient-to-br from-slate-900 via-slate-900 to-amber-950/30 border border-amber-500/20 flex flex-col gap-5 shadow-lg relative overflow-hidden">
+            <div className="absolute top-0 right-0 -mr-16 -mt-16 w-48 h-48 bg-amber-500/5 rounded-full blur-3xl pointer-events-none" />
+
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-800/80 pb-4">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-400">
+                  <Flame className="w-6 h-6 fill-amber-500 animate-pulse" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-white tracking-tight flex items-center gap-2">
+                    <span>Daily Engagement Streak</span>
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    Play every day to build your streak and earn bonus profile prestige
+                  </p>
+                </div>
+              </div>
+
+              <div>
+                {streakInfo.completedToday ? (
+                  <span className="px-3 py-1.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-bold flex items-center gap-1.5 shadow-sm">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                    <span>Today Completed</span>
+                  </span>
+                ) : streakInfo.needsCompletionToday ? (
+                  <span className="px-3 py-1.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 text-xs font-bold flex items-center gap-1.5 animate-pulse shadow-sm">
+                    <Clock className="w-4 h-4 text-amber-400" />
+                    <span>Streak Active — Play Today!</span>
+                  </span>
+                ) : (
+                  <span className="px-3 py-1.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700 text-xs font-semibold flex items-center gap-1.5">
+                    <Calendar className="w-4 h-4 text-slate-400" />
+                    <span>Start New Streak Today</span>
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5 items-center">
+              {/* Main Streak Counter */}
+              <div className="md:col-span-1 p-4 rounded-2xl bg-slate-950/80 border border-slate-800/80 flex flex-col items-center text-center justify-center gap-1">
+                <span className="text-[11px] uppercase font-bold text-slate-400">Current Streak</span>
+                <div className="flex items-center gap-2 my-1">
+                  <Flame className="w-8 h-8 text-amber-400 fill-amber-400" />
+                  <span className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-orange-400">
+                    {streakInfo.dailyStreak} {streakInfo.dailyStreak === 1 ? 'Day' : 'Days'}
+                  </span>
+                </div>
+                <button
+                  onClick={() => setCurrentScreen('daily_challenge')}
+                  className="mt-2 w-full py-2 px-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-bold text-xs transition-all shadow-md active:scale-95 flex items-center justify-center gap-1.5"
+                >
+                  <Trophy className="w-4 h-4" />
+                  <span>Play Daily Challenge</span>
+                </button>
+              </div>
+
+              {/* All-time Best & Activity */}
+              <div className="md:col-span-2 flex flex-col justify-between gap-4 p-4 rounded-2xl bg-slate-950/50 border border-slate-800/50">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-xl bg-slate-900 border border-slate-800 text-amber-400">
+                      <Trophy className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <span className="text-xs text-slate-400 block">All-Time Best Streak</span>
+                      <span className="text-sm font-bold text-white">
+                        {streakInfo.bestStreak} {streakInfo.bestStreak === 1 ? 'Day' : 'Days'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="text-right">
+                    <span className="text-xs text-slate-400 block">Last Active Date</span>
+                    <span className="text-xs font-medium text-slate-300 font-mono">
+                      {streakInfo.lastStreakDate || 'No record yet'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Weekly Consistency Visual Dot Matrix */}
+                <div className="flex flex-col gap-1.5 pt-2 border-t border-slate-800/60">
+                  <div className="flex items-center justify-between text-xs text-slate-400">
+                    <span className="font-medium text-[11px]">Weekly Activity</span>
+                    <span className="text-[10px] text-slate-500">Mon — Sun</span>
+                  </div>
+                  <div className="grid grid-cols-7 gap-1.5 text-center">
+                    {daysOfWeek.map((day, idx) => {
+                      const isToday = idx === currentDayIndex;
+                      const isCompletedDay =
+                        (isToday && streakInfo.completedToday) ||
+                        (idx < currentDayIndex && streakInfo.dailyStreak > (currentDayIndex - idx));
+
+                      return (
+                        <div key={idx} className="flex flex-col items-center gap-1">
+                          <div
+                            className={`w-full aspect-square max-w-[36 h-9] rounded-xl flex items-center justify-center text-xs font-bold transition-all border ${
+                              isCompletedDay
+                                ? 'bg-amber-500/20 border-amber-500/50 text-amber-400 shadow-sm shadow-amber-500/10'
+                                : isToday
+                                ? 'bg-slate-900 border-amber-500/40 text-slate-300 animate-pulse'
+                                : 'bg-slate-950 border-slate-800 text-slate-600'
+                            }`}
+                          >
+                            {isCompletedDay ? (
+                              <Flame className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                            ) : (
+                              day
+                            )}
+                          </div>
+                          <span className={`text-[10px] ${isToday ? 'text-amber-400 font-bold' : 'text-slate-500'}`}>
+                            {day}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+        );
+      })()}
 
       {/* Performance by Geometry */}
       <section className="p-6 rounded-3xl bg-slate-900 border border-slate-800 flex flex-col gap-4">

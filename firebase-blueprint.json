@@ -17,6 +17,9 @@
         "currentLevel": { "type": "number" },
         "selectedTheme": { "type": "string", "maxLength": 32 },
         "movementMode": { "type": "string", "enum": ["continuous", "step"] },
+        "dailyStreak": { "type": "number" },
+        "lastStreakDate": { "type": "string", "maxLength": 32 },
+        "bestStreak": { "type": "number" },
         "createdAt": { "type": "string", "format": "date-time" },
         "updatedAt": { "type": "string", "format": "date-time" }
       },

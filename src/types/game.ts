@@ -156,6 +156,9 @@ export interface UserProfileData {
   selectedTheme: ColorThemeId;
   movementMode: MovementMode;
   playerSpeed?: number; // Movement glide speed in cells/sec (e.g. 5.0 to 20.0)
+  dailyStreak?: number;
+  lastStreakDate?: string; // YYYY-MM-DD
+  bestStreak?: number;
   isGuest?: boolean;
   role?: 'player' | 'admin';
 }

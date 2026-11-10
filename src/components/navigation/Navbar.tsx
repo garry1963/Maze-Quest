@@ -14,10 +14,12 @@ import {
   LogIn,
   AlertTriangle,
   Wand2,
+  Flame,
 } from 'lucide-react';
 import { useGame, ScreenType } from '../../context/GameContext';
 import { useAuth } from '../../context/AuthContext';
 import { soundManager } from '../../services/audio';
+import { getStreakStatus } from '../../services/storage';
 import { AuthModal } from '../modals/AuthModal';
 
 export const Navbar: React.FC = () => {
@@ -84,6 +86,41 @@ export const Navbar: React.FC = () => {
 
           {/* User Progress Chips & Profile Controls */}
           <div className="flex items-center gap-2 md:gap-3">
+            {/* Daily Streak Indicator */}
+            {(() => {
+              const streakStatus = getStreakStatus(profile);
+              return (
+                <div
+                  onClick={() => setCurrentScreen('daily_challenge')}
+                  className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-extrabold cursor-pointer transition-all border shadow-sm ${
+                    streakStatus.completedToday
+                      ? 'bg-gradient-to-r from-amber-500/20 to-orange-500/20 border-amber-500/50 text-amber-300 shadow-amber-500/10'
+                      : streakStatus.activeStreak > 0
+                      ? 'bg-orange-500/15 border-orange-500/40 text-orange-300 animate-pulse'
+                      : 'bg-slate-900/90 border-slate-800 text-slate-400 hover:text-amber-300 hover:border-amber-500/30'
+                  }`}
+                  title={
+                    streakStatus.completedToday
+                      ? `Daily Streak Active (${streakStatus.activeStreak} day streak - completed today!)`
+                      : streakStatus.activeStreak > 0
+                      ? `${streakStatus.activeStreak} Day Streak! Play today's maze to extend!`
+                      : 'Start your Daily Streak by solving today\'s maze!'
+                  }
+                >
+                  <Flame
+                    className={`w-4 h-4 ${
+                      streakStatus.completedToday
+                        ? 'text-amber-400 fill-amber-400 animate-bounce'
+                        : streakStatus.activeStreak > 0
+                        ? 'text-orange-400 fill-orange-400/50'
+                        : 'text-slate-500'
+                    }`}
+                  />
+                  <span className="font-mono text-xs">{streakStatus.activeStreak}d</span>
+                </div>
+              );
+            })()}
+
             {/* Stars Counter */}
             <div
               onClick={() => setCurrentScreen('constellations')}

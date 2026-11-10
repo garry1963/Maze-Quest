@@ -58,6 +58,9 @@ export function getLocalProfile(): UserProfileData {
     selectedTheme: 'midnight_blue',
     movementMode: 'continuous',
     playerSpeed: 10.0,
+    dailyStreak: 0,
+    lastStreakDate: '',
+    bestStreak: 0,
     isGuest: true,
     role: 'player',
   };
@@ -70,6 +73,104 @@ export function saveLocalProfile(profile: UserProfileData) {
   } catch {
     // Ignore
   }
+}
+
+// Get active streak status for a profile
+export function getStreakStatus(profile: UserProfileData): {
+  activeStreak: number;
+  dailyStreak: number;
+  completedToday: boolean;
+  needsCompletionToday: boolean;
+  bestStreak: number;
+  lastStreakDate: string;
+} {
+  const todayStr = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+  const lastDateStr = profile.lastStreakDate || '';
+  const storedStreak = profile.dailyStreak || 0;
+  const storedBest = Math.max(profile.bestStreak || 0, storedStreak);
+
+  if (!lastDateStr) {
+    return {
+      activeStreak: 0,
+      dailyStreak: 0,
+      completedToday: false,
+      needsCompletionToday: true,
+      bestStreak: storedBest,
+      lastStreakDate: '',
+    };
+  }
+
+  if (lastDateStr === todayStr) {
+    return {
+      activeStreak: storedStreak,
+      dailyStreak: storedStreak,
+      completedToday: true,
+      needsCompletionToday: false,
+      bestStreak: storedBest,
+      lastStreakDate: lastDateStr,
+    };
+  }
+
+  const todayMs = new Date(todayStr).getTime();
+  const lastMs = new Date(lastDateStr).getTime();
+  const diffDays = Math.round((todayMs - lastMs) / (1000 * 3600 * 24));
+
+  if (diffDays === 1) {
+    // Completed yesterday: streak is active, needs completion today to advance!
+    return {
+      activeStreak: storedStreak,
+      dailyStreak: storedStreak,
+      completedToday: false,
+      needsCompletionToday: true,
+      bestStreak: storedBest,
+      lastStreakDate: lastDateStr,
+    };
+  }
+
+  // More than 1 day missed: streak reset
+  return {
+    activeStreak: 0,
+    dailyStreak: 0,
+    completedToday: false,
+    needsCompletionToday: true,
+    bestStreak: storedBest,
+    lastStreakDate: lastDateStr,
+  };
+}
+
+// Calculate streak update when a user completes a puzzle or challenge
+export function calculateStreakUpdate(profile: UserProfileData): UserProfileData {
+  const todayStr = new Date().toISOString().split('T')[0];
+  const lastDateStr = profile.lastStreakDate || '';
+
+  if (lastDateStr === todayStr) {
+    // Already recorded for today
+    return profile;
+  }
+
+  let newStreak = 1;
+  if (lastDateStr) {
+    const todayMs = new Date(todayStr).getTime();
+    const lastMs = new Date(lastDateStr).getTime();
+    const diffDays = Math.round((todayMs - lastMs) / (1000 * 3600 * 24));
+
+    if (diffDays === 1) {
+      newStreak = (profile.dailyStreak || 0) + 1;
+    } else {
+      newStreak = 1;
+    }
+  } else {
+    newStreak = 1;
+  }
+
+  const newBest = Math.max(profile.bestStreak || 0, newStreak);
+
+  return {
+    ...profile,
+    dailyStreak: newStreak,
+    lastStreakDate: todayStr,
+    bestStreak: newBest,
+  };
 }
 
 // Sync progress to Firestore
@@ -107,6 +208,10 @@ export async function syncUserProfile(profile: UserProfileData) {
       currentLevel: profile.currentLevel,
       selectedTheme: profile.selectedTheme,
       movementMode: profile.movementMode,
+      playerSpeed: profile.playerSpeed ?? 10.0,
+      dailyStreak: profile.dailyStreak || 0,
+      lastStreakDate: profile.lastStreakDate || '',
+      bestStreak: profile.bestStreak || 0,
       role: profile.role || 'player',
       updatedAt: new Date().toISOString(),
     }, { merge: true });
@@ -272,59 +377,6 @@ export async function submitLeaderboardScore(score: {
   }
 }
 
-// Difficulty-based benchmark entries ensuring every tier has realistic global competition
-const BENCHMARKS_BY_DIFFICULTY: Record<string, LeaderboardEntry[]> = {
-  easy: [
-    { id: 'b_easy_1', userId: 'bot_101', displayName: 'AstralSpark', points: 125, stars: 3, levelsCompleted: 14, bestTime: 8.6, submittedAt: '2026-11-10', difficulty: 'easy', puzzleName: 'Dawn Starlight' },
-    { id: 'b_easy_2', userId: 'bot_102', displayName: 'GlowWanderer', points: 110, stars: 3, levelsCompleted: 16, bestTime: 10.4, submittedAt: '2026-11-09', difficulty: 'easy', puzzleName: 'Polaris Gate' },
-    { id: 'b_easy_3', userId: 'bot_103', displayName: 'StarlightCadet', points: 95, stars: 3, levelsCompleted: 18, bestTime: 12.8, submittedAt: '2026-11-09', difficulty: 'easy', puzzleName: 'Little Dipper I' },
-    { id: 'b_easy_4', userId: 'bot_104', displayName: 'DawnSeeker', points: 80, stars: 2, levelsCompleted: 19, bestTime: 14.2, submittedAt: '2026-11-08', difficulty: 'easy', puzzleName: 'Corona Spark' },
-    { id: 'b_easy_5', userId: 'bot_105', displayName: 'OrbitRookie', points: 70, stars: 2, levelsCompleted: 22, bestTime: 16.5, submittedAt: '2026-11-08', difficulty: 'easy', puzzleName: 'Orion Pathway' },
-  ],
-  medium: [
-    { id: 'b_med_1', userId: 'bot_201', displayName: 'NovaSeeker', points: 310, stars: 3, levelsCompleted: 28, bestTime: 19.4, submittedAt: '2026-11-10', difficulty: 'medium', puzzleName: 'Cassiopeia Crown' },
-    { id: 'b_med_2', userId: 'bot_202', displayName: 'CosmicVoyager', points: 285, stars: 3, levelsCompleted: 31, bestTime: 23.2, submittedAt: '2026-11-09', difficulty: 'medium', puzzleName: 'Andromeda Ring' },
-    { id: 'b_med_3', userId: 'bot_203', displayName: 'PrismRunner', points: 260, stars: 3, levelsCompleted: 33, bestTime: 26.8, submittedAt: '2026-11-09', difficulty: 'medium', puzzleName: 'Centaurus Spiral' },
-    { id: 'b_med_4', userId: 'bot_204', displayName: 'SolarEcho', points: 230, stars: 2, levelsCompleted: 36, bestTime: 30.5, submittedAt: '2026-11-08', difficulty: 'medium', puzzleName: 'Pegasus Drift' },
-    { id: 'b_med_5', userId: 'bot_205', displayName: 'AuraWalker', points: 195, stars: 2, levelsCompleted: 40, bestTime: 33.9, submittedAt: '2026-11-07', difficulty: 'medium', puzzleName: 'Taurus Knot' },
-  ],
-  hard: [
-    { id: 'b_hard_1', userId: 'bot_301', displayName: 'NebulaGlide', points: 680, stars: 3, levelsCompleted: 45, bestTime: 38.5, submittedAt: '2026-11-10', difficulty: 'hard', puzzleName: 'Scorpius Maze' },
-    { id: 'b_hard_2', userId: 'bot_302', displayName: 'EclipseMaster', points: 620, stars: 3, levelsCompleted: 48, bestTime: 43.1, submittedAt: '2026-11-09', difficulty: 'hard', puzzleName: 'Draco Constellation' },
-    { id: 'b_hard_3', userId: 'bot_303', displayName: 'VortexDrifter', points: 570, stars: 3, levelsCompleted: 52, bestTime: 48.7, submittedAt: '2026-11-09', difficulty: 'hard', puzzleName: 'Phoenix Flare' },
-    { id: 'b_hard_4', userId: 'bot_304', displayName: 'ShadowWeaver', points: 510, stars: 2, levelsCompleted: 55, bestTime: 54.0, submittedAt: '2026-11-08', difficulty: 'hard', puzzleName: 'Hydra Labyrinth' },
-    { id: 'b_hard_5', userId: 'bot_305', displayName: 'ZenithMaze', points: 460, stars: 2, levelsCompleted: 58, bestTime: 62.4, submittedAt: '2026-11-07', difficulty: 'hard', puzzleName: 'Crux Chamber' },
-  ],
-  expert: [
-    { id: 'b_exp_1', userId: 'bot_401', displayName: 'HyperionBlade', points: 1350, stars: 3, levelsCompleted: 64, bestTime: 62.3, submittedAt: '2026-11-10', difficulty: 'expert', puzzleName: 'Cygnus Supernova' },
-    { id: 'b_exp_2', userId: 'bot_402', displayName: 'SingularityAce', points: 1210, stars: 3, levelsCompleted: 69, bestTime: 71.0, submittedAt: '2026-11-09', difficulty: 'expert', puzzleName: 'Monoceros Core' },
-    { id: 'b_exp_3', userId: 'bot_403', displayName: 'DarkMatterPilot', points: 1080, stars: 3, levelsCompleted: 73, bestTime: 79.5, submittedAt: '2026-11-09', difficulty: 'expert', puzzleName: 'Cepheus Portal' },
-    { id: 'b_exp_4', userId: 'bot_404', displayName: 'QuantumVoyager', points: 950, stars: 3, levelsCompleted: 77, bestTime: 88.2, submittedAt: '2026-11-08', difficulty: 'expert', puzzleName: 'Aquila Nexus' },
-    { id: 'b_exp_5', userId: 'bot_405', displayName: 'CelestialArchitect', points: 860, stars: 2, levelsCompleted: 82, bestTime: 97.6, submittedAt: '2026-11-07', difficulty: 'expert', puzzleName: 'Lyra Enigma' },
-  ],
-  master: [
-    { id: 'b_mas_1', userId: 'bot_501', displayName: 'AstralNavigator', points: 2450, stars: 3, levelsCompleted: 88, bestTime: 96.5, submittedAt: '2026-11-10', difficulty: 'master', puzzleName: 'Ursa Major Zenith' },
-    { id: 'b_mas_2', userId: 'bot_502', displayName: 'GalaxySovereign', points: 2180, stars: 3, levelsCompleted: 92, bestTime: 108.2, submittedAt: '2026-11-09', difficulty: 'master', puzzleName: 'Sagittarius Abyss' },
-    { id: 'b_mas_3', userId: 'bot_503', displayName: 'PulsarChampion', points: 1920, stars: 3, levelsCompleted: 95, bestTime: 122.4, submittedAt: '2026-11-09', difficulty: 'master', puzzleName: 'Vela Void Labyrinth' },
-    { id: 'b_mas_4', userId: 'bot_504', displayName: 'OmniverseWeaver', points: 1680, stars: 3, levelsCompleted: 101, bestTime: 139.0, submittedAt: '2026-11-08', difficulty: 'master', puzzleName: 'Corona Borealis Prime' },
-    { id: 'b_mas_5', userId: 'bot_505', displayName: 'TitanVortex', points: 1490, stars: 2, levelsCompleted: 108, bestTime: 158.4, submittedAt: '2026-11-07', difficulty: 'master', puzzleName: 'Hercules Apex' },
-  ],
-  daily: [
-    { id: 'b_day_1', userId: 'bot_601', displayName: 'ChronosRunner', points: 420, stars: 3, levelsCompleted: 24, bestTime: 18.5, submittedAt: '2026-11-10', gameMode: 'daily', puzzleName: 'Daily Solar Flare' },
-    { id: 'b_day_2', userId: 'bot_602', displayName: 'DaybreakPilot', points: 380, stars: 3, levelsCompleted: 27, bestTime: 22.0, submittedAt: '2026-11-10', gameMode: 'daily', puzzleName: 'Daily Solar Flare' },
-    { id: 'b_day_3', userId: 'bot_603', displayName: 'HorizonDrifter', points: 340, stars: 3, levelsCompleted: 30, bestTime: 26.4, submittedAt: '2026-11-10', gameMode: 'daily', puzzleName: 'Daily Solar Flare' },
-    { id: 'b_day_4', userId: 'bot_604', displayName: 'SunburstSeeker', points: 290, stars: 2, levelsCompleted: 34, bestTime: 31.0, submittedAt: '2026-11-10', gameMode: 'daily', puzzleName: 'Daily Solar Flare' },
-    { id: 'b_day_5', userId: 'bot_605', displayName: 'SolarProwler', points: 240, stars: 2, levelsCompleted: 39, bestTime: 36.8, submittedAt: '2026-11-10', gameMode: 'daily', puzzleName: 'Daily Solar Flare' },
-  ],
-  weekly: [
-    { id: 'b_wk_1', userId: 'bot_701', displayName: 'OmniArchitect', points: 1650, stars: 3, levelsCompleted: 62, bestTime: 72.0, submittedAt: '2026-11-09', gameMode: 'weekly', puzzleName: 'Weekly Gateway Master' },
-    { id: 'b_wk_2', userId: 'bot_702', displayName: 'AstralLegion', points: 1480, stars: 3, levelsCompleted: 68, bestTime: 81.5, submittedAt: '2026-11-09', gameMode: 'weekly', puzzleName: 'Weekly Gateway Master' },
-    { id: 'b_wk_3', userId: 'bot_703', displayName: 'LabyrinthLord', points: 1320, stars: 3, levelsCompleted: 74, bestTime: 94.2, submittedAt: '2026-11-08', gameMode: 'weekly', puzzleName: 'Weekly Gateway Master' },
-    { id: 'b_wk_4', userId: 'bot_704', displayName: 'InfinityVoyager', points: 1150, stars: 2, levelsCompleted: 80, bestTime: 108.0, submittedAt: '2026-11-08', gameMode: 'weekly', puzzleName: 'Weekly Gateway Master' },
-    { id: 'b_wk_5', userId: 'bot_705', displayName: 'CosmicTitan', points: 980, stars: 2, levelsCompleted: 88, bestTime: 124.5, submittedAt: '2026-11-07', gameMode: 'weekly', puzzleName: 'Weekly Gateway Master' },
-  ],
-};
-
 // Fetch leaderboard entries for a specific difficulty level or challenge type
 export async function fetchLeaderboard(category = 'medium'): Promise<LeaderboardEntry[]> {
   const path = 'leaderboardScores';
@@ -352,7 +404,7 @@ export async function fetchLeaderboard(category = 'medium'): Promise<Leaderboard
       });
     });
   } catch (error) {
-    console.warn('Leaderboard remote fetch error (using local & benchmark fallback):', error);
+    console.warn('Leaderboard remote fetch error (using local fallback):', error);
   }
 
   // Combine remote entries with local scores
@@ -394,16 +446,6 @@ export async function fetchLeaderboard(category = 'medium'): Promise<Leaderboard
       return diff === 'master';
     }
     return true;
-  });
-
-  // Inject difficulty benchmarks if fewer than 5 entries exist
-  const benchmarks = BENCHMARKS_BY_DIFFICULTY[category] || BENCHMARKS_BY_DIFFICULTY['medium'];
-  const userIds = new Set(filtered.map((e) => e.userId));
-
-  benchmarks.forEach((b) => {
-    if (!userIds.has(b.userId) && filtered.length < 15) {
-      filtered.push(b);
-    }
   });
 
   // Sort: highest points first, then fastest completion time

@@ -59,7 +59,7 @@ interface GameContextType {
 const GameContext = createContext<GameContextType | undefined>(undefined);
 
 export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { profile, user, isGuest } = useAuth();
+  const { profile, user, isGuest, recordDailyStreak, updateProfileStats } = useAuth();
   const [currentScreen, setCurrentScreen] = useState<ScreenType>('home');
   const [selectedConstellation, setSelectedConstellation] = useState<ConstellationInfo | null>(CONSTELLATIONS[0]);
   const [activePuzzle, setActivePuzzle] = useState<PuzzleDefinition | null>(null);
@@ -278,13 +278,14 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }
 
-    // Update profile aggregates
+    // Update profile aggregates & record daily streak
     const newTotalPoints = Object.values(newProgressMap).reduce((s, p) => s + p.points, 0);
     const newTotalStars = Object.values(newProgressMap).reduce((s, p) => s + p.stars, 0);
     const newLevelsDone = Object.values(newProgressMap).filter((p) => p.completed).length;
 
-    syncUserProfile({
-      ...profile,
+    recordDailyStreak();
+
+    updateProfileStats({
       totalPoints: newTotalPoints,
       totalStars: newTotalStars,
       totalLevelsCompleted: newLevelsDone,
