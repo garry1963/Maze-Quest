@@ -63,6 +63,10 @@ export const MazeCanvas: React.FC<MazeCanvasProps> = ({
   // Floating sub-pixel head position of the glowing light beam
   const floatingPosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
+  // Interactive Tap & Drag Light Globe refs
+  const isDraggingRef = useRef<boolean>(false);
+  const dragPointerPosRef = useRef<{ x: number; y: number } | null>(null);
+
   // Animation state for continuous smooth glide
   const animStateRef = useRef<AnimationWaypointState>({
     isMoving: false,
@@ -137,7 +141,7 @@ export const MazeCanvas: React.FC<MazeCanvasProps> = ({
   const findNextInDir = useCallback(
     (fromId: string, d: 'up' | 'down' | 'left' | 'right'): string | null => {
       const node = graph.nodes.get(fromId);
-      if (!node) return null;
+      if (!node || node.neighbors.length === 0) return null;
 
       if (graph.geometry === 'circular') {
         const r = node.coord.ring ?? 0;
@@ -165,19 +169,53 @@ export const MazeCanvas: React.FC<MazeCanvasProps> = ({
         return null;
       }
 
+      // Direction unit vector mapping (x, y)
+      const dirVec = {
+        up: { x: 0, y: -1 },
+        down: { x: 0, y: 1 },
+        left: { x: -1, y: 0 },
+        right: { x: 1, y: 0 },
+      }[d];
+
+      let bestNeighborId: string | null = null;
+      let maxAlignment = -Infinity;
+
       for (const nId of node.neighbors) {
         const neighbor = graph.nodes.get(nId);
         if (!neighbor) continue;
 
-        const dx = neighbor.coord.x - node.coord.x;
-        const dy = neighbor.coord.y - node.coord.y;
+        let vecX = 0;
+        let vecY = 0;
 
-        if (d === 'up' && dy < 0 && Math.abs(dx) <= 1) return nId;
-        if (d === 'down' && dy > 0 && Math.abs(dx) <= 1) return nId;
-        if (d === 'left' && dx < 0 && Math.abs(dy) <= 1) return nId;
-        if (d === 'right' && dx > 0 && Math.abs(dy) <= 1) return nId;
+        if (graph.geometry === 'hexagonal') {
+          // Calculate geometric center displacement for Hexagonal honeycomb cells
+          vecX = (neighbor.coord.x - node.coord.x) * 1.5;
+          const y1 = node.coord.y + (node.coord.x % 2 !== 0 ? 0.5 : 0);
+          const y2 = neighbor.coord.y + (neighbor.coord.x % 2 !== 0 ? 0.5 : 0);
+          vecY = (y2 - y1) * 1.732; // Math.sqrt(3) ~ 1.732
+        } else if (graph.geometry === 'triangular') {
+          vecX = neighbor.coord.x - node.coord.x;
+          vecY = (neighbor.coord.y - node.coord.y) * 0.866;
+        } else {
+          // Square & Silhouette
+          vecX = neighbor.coord.x - node.coord.x;
+          vecY = neighbor.coord.y - node.coord.y;
+        }
+
+        const len = Math.hypot(vecX, vecY);
+        if (len === 0) continue;
+
+        // Cosine angle alignment dot product: (vecX * dirVec.x + vecY * dirVec.y) / len
+        const alignment = (vecX * dirVec.x + vecY * dirVec.y) / len;
+
+        // Alignment threshold > 0.2 ensures we select the open neighbor best aligned with direction d
+        if (alignment > 0.2 && alignment > maxAlignment) {
+          maxAlignment = alignment;
+          bestNeighborId = nId;
+        }
       }
-      return null;
+
+      return bestNeighborId;
     },
     [graph]
   );
@@ -325,6 +363,123 @@ export const MazeCanvas: React.FC<MazeCanvasProps> = ({
       }
     },
     [mode, findNextInDir, buildGlideWaypoints, startGlide, onMove]
+  );
+
+  // Continuous Tap & Drag Solver: steps the light globe orb along open corridors towards pointer
+  const attemptDragMove = useCallback(
+    (px: number, py: number, width: number, height: number) => {
+      if (hasFinishedRef.current) return;
+
+      let iterations = 0;
+      while (iterations < 6) {
+        iterations++;
+        const currId = currentNodeIdRef.current;
+        const currNode = graph.nodes.get(currId);
+        if (!currNode || currNode.neighbors.length === 0) break;
+
+        const currPos = getNodePixelCenter(currId, width, height);
+        const distCurr = Math.hypot(px - currPos.x, py - currPos.y);
+
+        let bestNeighborId: string | null = null;
+        let minNeighborDist = distCurr;
+
+        for (const nId of currNode.neighbors) {
+          const nPos = getNodePixelCenter(nId, width, height);
+          const distN = Math.hypot(px - nPos.x, py - nPos.y);
+          if (distN < minNeighborDist) {
+            minNeighborDist = distN;
+            bestNeighborId = nId;
+          }
+        }
+
+        if (bestNeighborId) {
+          // Advance light globe to closest open neighbor cell along corridor
+          currentNodeIdRef.current = bestNeighborId;
+          exploredNodesRef.current.add(bestNeighborId);
+
+          // Update traversed path (prune if retracing)
+          const p = playerPathRef.current;
+          if (p.length > 1 && p[p.length - 2] === bestNeighborId) {
+            playerPathRef.current = p.slice(0, p.length - 1);
+          } else {
+            playerPathRef.current = [...p, bestNeighborId];
+          }
+
+          movesRef.current += 1;
+          soundManager.playMove();
+          if (onMove) onMove(movesRef.current);
+
+          // Check Collectibles
+          if (mode === 'token_collection' && graph.collectibles) {
+            const arrNode = graph.nodes.get(bestNeighborId);
+            if (arrNode) {
+              const token = graph.collectibles.find(
+                (c) =>
+                  c.position.x === arrNode.coord.x &&
+                  c.position.y === arrNode.coord.y &&
+                  !collectedTokensRef.current.has(c.id)
+              );
+              if (token) {
+                soundManager.playToken();
+                collectedTokensRef.current.add(token.id);
+                if (onTokenCollected && graph.collectibles) {
+                  onTokenCollected(collectedTokensRef.current.size, graph.collectibles.length);
+                }
+              }
+            }
+          }
+
+          // Check Portals
+          if (mode === 'intertwined' && graph.portals) {
+            const arrNode = graph.nodes.get(bestNeighborId);
+            if (arrNode) {
+              const portal = graph.portals.find(
+                (pt) =>
+                  (pt.entry.x === arrNode.coord.x && pt.entry.y === arrNode.coord.y) ||
+                  (pt.exit.x === arrNode.coord.x && pt.exit.y === arrNode.coord.y)
+              );
+              if (portal) {
+                const otherCoord =
+                  portal.entry.x === arrNode.coord.x && portal.entry.y === arrNode.coord.y
+                    ? portal.exit
+                    : portal.entry;
+                const otherNode = Array.from(graph.nodes.values()).find(
+                  (n) => n.coord.x === otherCoord.x && n.coord.y === otherCoord.y
+                );
+                if (otherNode && otherNode.id !== bestNeighborId) {
+                  soundManager.playPortal();
+                  currentNodeIdRef.current = otherNode.id;
+                  playerPathRef.current.push(otherNode.id);
+                  exploredNodesRef.current.add(otherNode.id);
+                }
+              }
+            }
+          }
+
+          // Check Exit Reached
+          if (bestNeighborId === graph.exitNodeId) {
+            if (
+              mode === 'token_collection' &&
+              graph.collectibles &&
+              collectedTokensRef.current.size < graph.collectibles.length
+            ) {
+              soundManager.playBump();
+              break;
+            } else {
+              hasFinishedRef.current = true;
+              setTimeout(() => {
+                onExitReached();
+              }, 150);
+              break;
+            }
+          }
+        } else {
+          // Pointer is closest to current node center or blocked by wall
+          break;
+        }
+      }
+    },
+    [graph, mode, getNodePixelCenter, onMove, onExitReached, onTokenCollected]
   );
 
   // Expose controller callback to parent (for tablet Virtual D-Pad)
@@ -1313,6 +1468,33 @@ export const MazeCanvas: React.FC<MazeCanvasProps> = ({
       ctx.beginPath();
       ctx.arc(px, py, Math.max(4.5, cellW * 0.25), 0, Math.PI * 2);
       ctx.fill();
+
+      // Draw interactive drag tether beam and target ring indicator when active
+      if (isDraggingRef.current && dragPointerPosRef.current) {
+        const ptr = dragPointerPosRef.current;
+        ctx.strokeStyle = theme.playerGlow;
+        ctx.shadowColor = theme.playerGlow;
+        ctx.shadowBlur = 12;
+        ctx.lineWidth = 2.2;
+        ctx.setLineDash([4, 4]);
+        ctx.beginPath();
+        ctx.moveTo(px, py);
+        ctx.lineTo(ptr.x, ptr.y);
+        ctx.stroke();
+
+        ctx.setLineDash([]);
+        ctx.fillStyle = theme.playerGlow;
+        ctx.beginPath();
+        ctx.arc(ptr.x, ptr.y, 5, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1.6;
+        ctx.beginPath();
+        ctx.arc(ptr.x, ptr.y, 14, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+
       ctx.restore();
 
       // 7. FOG OF WAR (Hidden Mode)
@@ -1357,7 +1539,37 @@ export const MazeCanvas: React.FC<MazeCanvasProps> = ({
     >
       <canvas
         ref={canvasRef}
-        className="w-full h-full max-w-[620px] max-h-[620px] sm:max-w-[720px] sm:max-h-[720px] lg:max-w-[800px] lg:max-h-[800px] aspect-square rounded-3xl cursor-pointer touch-none shadow-2xl shadow-black/90 ring-1 ring-white/10 border border-slate-700/60 transition-all bg-slate-950"
+        className="w-full h-full max-w-[620px] max-h-[620px] sm:max-w-[720px] sm:max-h-[720px] lg:max-w-[800px] lg:max-h-[800px] aspect-square rounded-3xl cursor-grab active:cursor-grabbing touch-none shadow-2xl shadow-black/90 ring-1 ring-white/10 border border-slate-700/60 transition-all bg-slate-950"
+        onPointerDown={(e) => {
+          const rect = e.currentTarget.getBoundingClientRect();
+          const px = e.clientX - rect.left;
+          const py = e.clientY - rect.top;
+          isDraggingRef.current = true;
+          dragPointerPosRef.current = { x: px, y: py };
+          try {
+            e.currentTarget.setPointerCapture(e.pointerId);
+          } catch {}
+          attemptDragMove(px, py, rect.width, rect.height);
+        }}
+        onPointerMove={(e) => {
+          if (!isDraggingRef.current) return;
+          const rect = e.currentTarget.getBoundingClientRect();
+          const px = e.clientX - rect.left;
+          const py = e.clientY - rect.top;
+          dragPointerPosRef.current = { x: px, y: py };
+          attemptDragMove(px, py, rect.width, rect.height);
+        }}
+        onPointerUp={(e) => {
+          isDraggingRef.current = false;
+          dragPointerPosRef.current = null;
+          try {
+            e.currentTarget.releasePointerCapture(e.pointerId);
+          } catch {}
+        }}
+        onPointerCancel={() => {
+          isDraggingRef.current = false;
+          dragPointerPosRef.current = null;
+        }}
         onClick={(e) => {
           // Direct tap steering relative to player orb
           const rect = e.currentTarget.getBoundingClientRect();

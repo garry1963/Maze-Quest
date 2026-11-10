@@ -1,5 +1,6 @@
 import {
   collection,
+  deleteDoc,
   doc,
   getDoc,
   getDocs,
@@ -16,6 +17,17 @@ const LOCAL_PROGRESS_KEY = 'maze_local_progress';
 const LOCAL_PROFILE_KEY = 'maze_local_profile';
 const LOCAL_CHALLENGE_ATTEMPTS_KEY = 'stargazer_challenge_attempts';
 const LOCAL_SCORES_KEY = 'stargazer_local_scores';
+
+// Helper to strip undefined properties before passing payloads to Firestore setDoc()
+function cleanFirestorePayload<T extends Record<string, any>>(obj: T): Record<string, any> {
+  const cleaned: Record<string, any> = {};
+  for (const [key, val] of Object.entries(obj)) {
+    if (val !== undefined) {
+      cleaned[key] = val;
+    }
+  }
+  return cleaned;
+}
 
 // Get local cached progress (for guests or offline play)
 export function getLocalProgress(): Record<string, UserProgressData> {
@@ -177,10 +189,11 @@ export function calculateStreakUpdate(profile: UserProfileData): UserProfileData
 export async function syncUserProgress(userId: string, data: UserProgressData) {
   const path = `users/${userId}/progress/${data.puzzleId}`;
   try {
-    await setDoc(doc(db, 'users', userId, 'progress', data.puzzleId), {
+    const payload = cleanFirestorePayload({
       ...data,
       lastPlayedAt: new Date().toISOString(),
-    }, { merge: true });
+    });
+    await setDoc(doc(db, 'users', userId, 'progress', data.puzzleId), payload, { merge: true });
   } catch (error) {
     console.warn('Could not sync progress to Firestore, saved locally:', error);
     // Don't throw fatal error if offline
@@ -195,7 +208,7 @@ export async function syncUserProfile(profile: UserProfileData) {
   }
   const path = `users/${profile.uid}`;
   try {
-    await setDoc(doc(db, 'users', profile.uid), {
+    const payload = cleanFirestorePayload({
       uid: profile.uid,
       displayName: profile.displayName,
       email: profile.email,
@@ -214,7 +227,8 @@ export async function syncUserProfile(profile: UserProfileData) {
       bestStreak: profile.bestStreak || 0,
       role: profile.role || 'player',
       updatedAt: new Date().toISOString(),
-    }, { merge: true });
+    });
+    await setDoc(doc(db, 'users', profile.uid), payload, { merge: true });
     saveLocalProfile(profile);
   } catch (error) {
     console.warn('Could not sync user profile to Firestore:', error);
@@ -290,10 +304,11 @@ export async function recordChallengeAttempt(
   if (userId && !userId.startsWith('guest_')) {
     const path = `users/${userId}/challengeAttempts/${attempt.challengeId}`;
     try {
-      await setDoc(doc(db, 'users', userId, 'challengeAttempts', attempt.challengeId), {
+      const payload = cleanFirestorePayload({
         ...attempt,
         attemptedAt: attempt.attemptedAt || new Date().toISOString(),
       });
+      await setDoc(doc(db, 'users', userId, 'challengeAttempts', attempt.challengeId), payload);
     } catch (error) {
       console.warn('Could not sync challenge attempt to Firestore (offline or rules):', error);
     }
@@ -357,7 +372,7 @@ export async function submitLeaderboardScore(score: {
   // If authenticated with Firebase, write to global leaderboard collection
   if (score.userId && !score.userId.startsWith('guest_')) {
     try {
-      await setDoc(doc(db, 'leaderboardScores', scoreId), {
+      const payload = cleanFirestorePayload({
         scoreId,
         userId: score.userId,
         displayNameSnapshot: score.displayName,
@@ -371,6 +386,7 @@ export async function submitLeaderboardScore(score: {
         moveCount: score.moveCount,
         submittedAt: new Date().toISOString(),
       });
+      await setDoc(doc(db, 'leaderboardScores', scoreId), payload);
     } catch (error) {
       console.warn('Score submission to Firestore skipped/failed (offline or rules):', error);
     }
@@ -458,3 +474,106 @@ export async function fetchLeaderboard(category = 'medium'): Promise<Leaderboard
 
   return filtered.slice(0, 50);
 }
+
+// --- Cloud Community Puzzle Bank ---
+
+export interface CommunityPuzzleData {
+  puzzleId: string;
+  puzzleName: string;
+  creatorId: string;
+  creatorName: string;
+  mazeShape: string;
+  silhouette?: string;
+  gridWidth: number;
+  gridHeight: number;
+  difficulty: Difficulty;
+  gameMode: string;
+  generationSeed: number;
+  timeLimit?: number;
+  moveLimit?: number;
+  basePoints: number;
+  playsCount: number;
+  likesCount: number;
+  createdAt: string;
+}
+
+const LOCAL_COMMUNITY_PUZZLES_KEY = 'maze_quest_community_puzzles';
+
+export function getLocalCommunityPuzzles(): CommunityPuzzleData[] {
+  try {
+    const raw = localStorage.getItem(LOCAL_COMMUNITY_PUZZLES_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveLocalCommunityPuzzle(puzzle: CommunityPuzzleData) {
+  try {
+    const list = getLocalCommunityPuzzles();
+    const existingIdx = list.findIndex((p) => p.puzzleId === puzzle.puzzleId);
+    if (existingIdx >= 0) {
+      list[existingIdx] = puzzle;
+    } else {
+      list.unshift(puzzle);
+    }
+    localStorage.setItem(LOCAL_COMMUNITY_PUZZLES_KEY, JSON.stringify(list.slice(0, 100)));
+  } catch {
+    // Ignore storage quota
+  }
+}
+
+export async function publishCommunityPuzzle(puzzle: CommunityPuzzleData): Promise<void> {
+  saveLocalCommunityPuzzle(puzzle);
+  if (puzzle.creatorId && !puzzle.creatorId.startsWith('guest_')) {
+    const path = `communityPuzzles/${puzzle.puzzleId}`;
+    try {
+      const payload = cleanFirestorePayload({
+        ...puzzle,
+        createdAt: puzzle.createdAt || new Date().toISOString(),
+      });
+      await setDoc(doc(db, 'communityPuzzles', puzzle.puzzleId), payload);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, path);
+    }
+  }
+}
+
+export async function fetchCommunityPuzzles(): Promise<CommunityPuzzleData[]> {
+  const path = 'communityPuzzles';
+  const remotePuzzles: CommunityPuzzleData[] = [];
+  try {
+    const colRef = collection(db, path);
+    const q = query(colRef, limit(100));
+    const snap = await getDocs(q);
+    snap.forEach((d) => {
+      remotePuzzles.push(d.data() as CommunityPuzzleData);
+    });
+  } catch (error) {
+    console.warn('Could not fetch community puzzles from Firestore, fallback to local cache:', error);
+  }
+
+  const localList = getLocalCommunityPuzzles();
+  const map = new Map<string, CommunityPuzzleData>();
+  remotePuzzles.forEach((p) => map.set(p.puzzleId, p));
+  localList.forEach((p) => map.set(p.puzzleId, p));
+
+  const all = Array.from(map.values());
+  all.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  return all;
+}
+
+export async function deleteCommunityPuzzle(puzzleId: string): Promise<void> {
+  try {
+    const list = getLocalCommunityPuzzles().filter((p) => p.puzzleId !== puzzleId);
+    localStorage.setItem(LOCAL_COMMUNITY_PUZZLES_KEY, JSON.stringify(list));
+  } catch {}
+
+  const path = `communityPuzzles/${puzzleId}`;
+  try {
+    await deleteDoc(doc(db, 'communityPuzzles', puzzleId));
+  } catch (error) {
+    console.warn('Could not delete community puzzle from Firestore:', error);
+  }
+}
+

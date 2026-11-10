@@ -16,6 +16,7 @@ import { useAuth } from './AuthContext';
 export type ScreenType =
   | 'home'
   | 'generator'
+  | 'community_bank'
   | 'constellations'
   | 'level_select'
   | 'game'

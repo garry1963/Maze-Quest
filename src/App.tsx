@@ -18,6 +18,7 @@ import { AchievementsScreen } from './components/screens/AchievementsScreen';
 import { SettingsScreen } from './components/screens/SettingsScreen';
 import { AdminDashboard } from './components/screens/AdminDashboard';
 import { PuzzleGeneratorScreen } from './components/screens/PuzzleGeneratorScreen';
+import { CommunityBankScreen } from './components/screens/CommunityBankScreen';
 import { CONSTELLATIONS, INITIAL_LEVELS } from './services/puzzleData';
 
 const AppContent: React.FC = () => {
@@ -40,6 +41,7 @@ const AppContent: React.FC = () => {
       <main className="flex-1 w-full flex flex-col items-center">
         {currentScreen === 'home' && <HomeScreen />}
         {currentScreen === 'generator' && <PuzzleGeneratorScreen />}
+        {currentScreen === 'community_bank' && <CommunityBankScreen />}
         {currentScreen === 'constellations' && <ConstellationMap />}
         {currentScreen === 'level_select' && (
           <ConstellationLevelSelect

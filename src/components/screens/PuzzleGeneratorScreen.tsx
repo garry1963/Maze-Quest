@@ -12,8 +12,10 @@ import {
   Compass,
   Zap,
   Flame,
+  Globe,
 } from 'lucide-react';
 import { useGame } from '../../context/GameContext';
+import { useAuth } from '../../context/AuthContext';
 import { generateMaze } from '../../services/mazeEngine';
 import {
   Difficulty,
@@ -23,9 +25,12 @@ import {
   SpecialSilhouette,
 } from '../../types/game';
 import { BASE_POINTS } from '../../services/puzzleData';
+import { publishCommunityPuzzle } from '../../services/storage';
+import { AuthModal } from '../modals/AuthModal';
 
 export const PuzzleGeneratorScreen: React.FC = () => {
   const { setCurrentScreen, playPuzzle } = useGame();
+  const { profile, isGuest } = useAuth();
 
   // Difficulty selection: Easy, Medium, Hard, Expert
   const [selectedDifficulty, setSelectedDifficulty] = useState<
@@ -41,6 +46,54 @@ export const PuzzleGeneratorScreen: React.FC = () => {
 
   // Seed
   const [seed, setSeed] = useState<number>(() => Math.floor(Math.random() * 900000) + 100000);
+
+  // Community Publishing State
+  const [showPublishModal, setShowPublishModal] = useState(false);
+  const [showAuthPrompt, setShowAuthPrompt] = useState(false);
+  const [customName, setCustomName] = useState('');
+  const [isPublishing, setIsPublishing] = useState(false);
+  const [publishSuccessMsg, setPublishSuccessMsg] = useState('');
+
+  const handlePublishToCommunity = () => {
+    if (isGuest) {
+      setShowAuthPrompt(true);
+      return;
+    }
+    const diffName = selectedDifficulty.charAt(0).toUpperCase() + selectedDifficulty.slice(1);
+    const geoName = selectedGeometry.charAt(0).toUpperCase() + selectedGeometry.slice(1);
+    setCustomName(`${diffName} ${geoName} Labyrinth`);
+    setShowPublishModal(true);
+  };
+
+  const confirmPublish = async () => {
+    if (!customName.trim()) return;
+    setIsPublishing(true);
+    const puzzleId = `community_${Date.now()}_${seed}`;
+    await publishCommunityPuzzle({
+      puzzleId,
+      puzzleName: customName.trim(),
+      creatorId: profile.uid,
+      creatorName: profile.displayName || 'Stargazer',
+      mazeShape: selectedGeometry,
+      silhouette: selectedGeometry === 'silhouette' ? selectedSilhouette : undefined,
+      gridWidth: dimensions.w,
+      gridHeight: dimensions.h,
+      difficulty: selectedDifficulty as Difficulty,
+      gameMode: selectedMode,
+      generationSeed: seed,
+      basePoints: BASE_POINTS[selectedDifficulty] || 100,
+      playsCount: 1,
+      likesCount: 0,
+      createdAt: new Date().toISOString(),
+    });
+    setIsPublishing(false);
+    setPublishSuccessMsg('Puzzle published to Cloud Community Bank!');
+    setTimeout(() => {
+      setPublishSuccessMsg('');
+      setShowPublishModal(false);
+      setCurrentScreen('community_bank');
+    }, 1500);
+  };
 
   // Compute grid dimensions based on difficulty
   const dimensions = useMemo(() => {
@@ -393,7 +446,7 @@ export const PuzzleGeneratorScreen: React.FC = () => {
         </div>
 
         {/* Buttons */}
-        <div className="flex items-center gap-3 w-full sm:w-auto">
+        <div className="flex flex-wrap sm:flex-nowrap items-center gap-3 w-full sm:w-auto">
           <button
             onClick={() => setSeed(Math.floor(Math.random() * 900000) + 100000)}
             className="p-3.5 rounded-2xl bg-slate-800 hover:bg-slate-750 text-slate-300 hover:text-white border border-slate-700 transition-all active:scale-95"
@@ -403,14 +456,92 @@ export const PuzzleGeneratorScreen: React.FC = () => {
           </button>
 
           <button
+            onClick={handlePublishToCommunity}
+            className="px-5 py-3.5 rounded-2xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-amber-300 font-bold text-xs md:text-sm flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
+            title="Publish to Cloud Community Puzzle Bank for all players"
+          >
+            <Globe className="w-4 h-4 text-amber-400" />
+            <span>Publish to Cloud Bank</span>
+          </button>
+
+          <button
             onClick={handleStartGame}
-            className="flex-1 sm:flex-initial px-8 py-3.5 rounded-2xl bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 text-white font-bold text-sm md:text-base flex items-center justify-center gap-2 shadow-xl shadow-sky-500/25 transition-all active:scale-[0.98]"
+            className="flex-1 sm:flex-initial px-6 py-3.5 rounded-2xl bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 text-white font-bold text-sm md:text-base flex items-center justify-center gap-2 shadow-xl shadow-sky-500/25 transition-all active:scale-[0.98]"
           >
             <Play className="w-5 h-5 fill-white" />
-            <span>Generate & Play Labyrinth</span>
+            <span>Generate & Play</span>
           </button>
         </div>
       </div>
+
+      {/* Publish Dialog Modal */}
+      {showPublishModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fade-in">
+          <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl flex flex-col gap-4 text-left">
+            <div className="flex items-center gap-2.5">
+              <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400">
+                <Globe className="w-6 h-6 animate-pulse" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-white tracking-tight">Publish to Cloud Bank</h3>
+                <p className="text-xs text-slate-400">Share your generated maze with all players</p>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-semibold text-slate-300">Puzzle Name:</label>
+              <input
+                type="text"
+                value={customName}
+                onChange={(e) => setCustomName(e.target.value)}
+                className="px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white text-xs font-bold focus:outline-none focus:border-amber-500"
+                placeholder="e.g. Celestial Ring Labyrinth"
+              />
+            </div>
+
+            <div className="p-3 rounded-xl bg-slate-950/80 border border-slate-800/80 text-xs text-slate-400 space-y-1">
+              <div className="flex justify-between">
+                <span>Creator:</span>
+                <span className="font-bold text-slate-200">{profile.displayName}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Geometry:</span>
+                <span className="font-bold text-slate-200 capitalize">{selectedGeometry}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Difficulty:</span>
+                <span className="font-bold text-slate-200 capitalize">{selectedDifficulty}</span>
+              </div>
+            </div>
+
+            {publishSuccessMsg ? (
+              <div className="p-3 rounded-xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-xs font-bold text-center">
+                {publishSuccessMsg}
+              </div>
+            ) : (
+              <div className="flex gap-2 pt-2">
+                <button
+                  onClick={() => setShowPublishModal(false)}
+                  className="flex-1 py-2.5 rounded-xl bg-slate-800 text-slate-400 hover:text-white font-semibold text-xs transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmPublish}
+                  disabled={isPublishing}
+                  className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-bold text-xs transition-all shadow-md active:scale-95 flex items-center justify-center gap-1.5"
+                >
+                  {isPublishing ? 'Publishing...' : 'Confirm & Publish 🌐'}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {showAuthPrompt && (
+        <AuthModal isOpen={showAuthPrompt} onClose={() => setShowAuthPrompt(false)} />
+      )}
     </div>
   );
 };

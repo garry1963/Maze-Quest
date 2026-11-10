@@ -58,6 +58,14 @@ service cloud.firestore {
       allow write: if isAdmin() && isValidId(puzzleId);
     }
 
+    // Community Puzzle Bank
+    match /communityPuzzles/{puzzleId} {
+      allow read: if true;
+      allow create: if isSignedIn() && isValidId(puzzleId) && incoming().creatorId == request.auth.uid;
+      allow update: if isSignedIn() && (existing().creatorId == request.auth.uid || isAdmin());
+      allow delete: if isSignedIn() && (existing().creatorId == request.auth.uid || isAdmin());
+    }
+
     // Constellations
     match /constellations/{constellationId} {
       allow read: if true;

@@ -142,6 +142,31 @@
         "grantedAt": { "type": "string", "format": "date-time" }
       },
       "required": ["email", "role"]
+    },
+    "CommunityPuzzle": {
+      "title": "CommunityPuzzle",
+      "description": "User-generated custom maze puzzle published to the global community bank",
+      "type": "object",
+      "properties": {
+        "puzzleId": { "type": "string", "maxLength": 128 },
+        "puzzleName": { "type": "string", "maxLength": 64 },
+        "creatorId": { "type": "string", "maxLength": 128 },
+        "creatorName": { "type": "string", "maxLength": 50 },
+        "mazeShape": { "type": "string", "maxLength": 32 },
+        "silhouette": { "type": "string", "maxLength": 32 },
+        "gridWidth": { "type": "number" },
+        "gridHeight": { "type": "number" },
+        "difficulty": { "type": "string", "maxLength": 20 },
+        "gameMode": { "type": "string", "maxLength": 32 },
+        "generationSeed": { "type": "number" },
+        "timeLimit": { "type": "number" },
+        "moveLimit": { "type": "number" },
+        "basePoints": { "type": "number" },
+        "playsCount": { "type": "number" },
+        "likesCount": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["puzzleId", "puzzleName", "creatorId", "creatorName", "mazeShape", "difficulty", "gameMode", "generationSeed"]
     }
   },
   "firestore": {
@@ -160,6 +185,10 @@
     "/puzzles/{puzzleId}": {
       "schema": { "$ref": "#/entities/Puzzle" },
       "description": "Published and custom maze puzzles"
+    },
+    "/communityPuzzles/{puzzleId}": {
+      "schema": { "$ref": "#/entities/CommunityPuzzle" },
+      "description": "Cloud community puzzle bank accessible by all signed-in players"
     },
     "/constellations/{constellationId}": {
       "schema": { "$ref": "#/entities/Constellation" },

@@ -15,6 +15,7 @@ import {
   AlertTriangle,
   Wand2,
   Flame,
+  Globe,
 } from 'lucide-react';
 import { useGame, ScreenType } from '../../context/GameContext';
 import { useAuth } from '../../context/AuthContext';
@@ -37,6 +38,7 @@ export const Navbar: React.FC = () => {
   const navLinks: { screen: ScreenType; label: string; icon: React.ReactNode }[] = [
     { screen: 'home', label: 'Home', icon: <Compass className="w-4 h-4" /> },
     { screen: 'generator', label: 'Generator', icon: <Wand2 className="w-4 h-4" /> },
+    { screen: 'community_bank', label: 'Cloud Bank', icon: <Globe className="w-4 h-4" /> },
     { screen: 'constellations', label: 'Constellations', icon: <Sparkles className="w-4 h-4" /> },
     { screen: 'daily_challenge', label: 'Daily Maze', icon: <Calendar className="w-4 h-4" /> },
     { screen: 'weekly_challenge', label: 'Weekly', icon: <Layers className="w-4 h-4" /> },
