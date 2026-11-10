@@ -24,12 +24,15 @@ import {
   Zap,
   Plus,
   Minus,
+  Lock,
+  Trophy,
 } from 'lucide-react';
 import { MazeCanvas } from './MazeCanvas';
 import { generateMaze } from '../../services/mazeEngine';
 import { useGame } from '../../context/GameContext';
 import { useAuth } from '../../context/AuthContext';
 import { soundManager } from '../../services/audio';
+import { recordChallengeAttempt } from '../../services/storage';
 import { LevelCompleteModal } from '../modals/LevelCompleteModal';
 import { PuzzleDefinition } from '../../types/game';
 
@@ -81,6 +84,8 @@ export const GameScreen: React.FC<GameScreenProps> = ({ puzzle, onBack }) => {
     unlockedConstellation?: string;
   } | null>(null);
 
+  const isChallenge = puzzle.id.startsWith('daily_') || puzzle.id.startsWith('weekly_');
+
   // Build the deterministic solvable maze graph
   const graph = useMemo(() => {
     return generateMaze(
@@ -118,6 +123,21 @@ export const GameScreen: React.FC<GameScreenProps> = ({ puzzle, onBack }) => {
         if (puzzle.mode === 'time_challenge' && puzzle.timeLimit) {
           if (next >= puzzle.timeLimit) {
             setIsFailed(true);
+            if (isChallenge) {
+              recordChallengeAttempt(
+                {
+                  challengeId: puzzle.id,
+                  challengeType: puzzle.id.startsWith('daily_') ? 'daily' : 'weekly',
+                  completed: false,
+                  attemptedAt: new Date().toISOString(),
+                  points: 0,
+                  stars: 0,
+                  completionTime: next,
+                  moveCount: movesCount,
+                },
+                profile.uid
+              );
+            }
             soundManager.playBump();
           }
         }
@@ -126,7 +146,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({ puzzle, onBack }) => {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [completedStats, isPaused, isFailed, puzzle]);
+  }, [completedStats, isPaused, isFailed, puzzle, isChallenge, movesCount, profile.uid]);
 
   // Handle Move
   const handleMove = (newMoves: number) => {
@@ -135,6 +155,21 @@ export const GameScreen: React.FC<GameScreenProps> = ({ puzzle, onBack }) => {
     if (puzzle.mode === 'restricted_moves' && puzzle.moveLimit) {
       if (newMoves > puzzle.moveLimit) {
         setIsFailed(true);
+        if (isChallenge) {
+          recordChallengeAttempt(
+            {
+              challengeId: puzzle.id,
+              challengeType: puzzle.id.startsWith('daily_') ? 'daily' : 'weekly',
+              completed: false,
+              attemptedAt: new Date().toISOString(),
+              points: 0,
+              stars: 0,
+              completionTime: elapsedSeconds,
+              moveCount: newMoves,
+            },
+            profile.uid
+          );
+        }
         soundManager.playBump();
       }
     }
@@ -203,6 +238,12 @@ export const GameScreen: React.FC<GameScreenProps> = ({ puzzle, onBack }) => {
               <span className="px-2 py-0.5 rounded-md bg-slate-800/80 border border-slate-700/50">
                 {puzzle.mode.replace('_', ' ')}
               </span>
+              {isChallenge && (
+                <span className="px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[10px] font-bold flex items-center gap-1">
+                  <Lock className="w-3 h-3 text-amber-400" />
+                  1 Attempt Challenge
+                </span>
+              )}
             </div>
           </div>
         </div>
@@ -274,15 +315,32 @@ export const GameScreen: React.FC<GameScreenProps> = ({ puzzle, onBack }) => {
       <main className="relative flex-1 w-full max-w-4xl flex flex-col items-center justify-center p-2 md:p-4">
         {/* Failure alert banner */}
         {isFailed && (
-          <div className="absolute top-4 z-40 px-5 py-2.5 rounded-2xl bg-rose-500/20 border border-rose-500/40 text-rose-200 text-sm font-semibold flex items-center gap-3 backdrop-blur-md shadow-xl animate-bounce">
+          <div className="absolute top-4 z-40 px-5 py-3 rounded-2xl bg-rose-500/20 border border-rose-500/40 text-rose-200 text-sm font-semibold flex items-center gap-3 backdrop-blur-md shadow-xl">
             <Flame className="w-5 h-5 text-rose-400" />
-            <span>Target exceeded! Tap restart to try again.</span>
-            <button
-              onClick={handleRestart}
-              className="px-3 py-1 rounded-lg bg-rose-500 hover:bg-rose-400 text-white font-bold text-xs"
-            >
-              Restart
-            </button>
+            <span>
+              {isChallenge
+                ? 'Challenge limit reached! Your single official attempt has ended.'
+                : 'Target exceeded! Tap restart to try again.'}
+            </span>
+            {isChallenge ? (
+              <button
+                onClick={() =>
+                  setCurrentScreen(
+                    puzzle.id.startsWith('daily_') ? 'daily_challenge' : 'weekly_challenge'
+                  )
+                }
+                className="px-3.5 py-1.5 rounded-lg bg-sky-500 hover:bg-sky-400 text-white font-bold text-xs shadow-md transition-all active:scale-95"
+              >
+                Return to Challenges
+              </button>
+            ) : (
+              <button
+                onClick={handleRestart}
+                className="px-3 py-1 rounded-lg bg-rose-500 hover:bg-rose-400 text-white font-bold text-xs"
+              >
+                Restart
+              </button>
+            )}
           </div>
         )}
 
@@ -492,14 +550,25 @@ export const GameScreen: React.FC<GameScreenProps> = ({ puzzle, onBack }) => {
             <span>Hint</span>
           </button>
 
-          <button
-            onClick={handleRestart}
-            className="px-3.5 py-2 rounded-xl bg-slate-900/80 hover:bg-slate-800 border border-slate-700/60 text-slate-300 hover:text-white text-xs font-semibold flex items-center gap-1.5 transition-all active:scale-95"
-            title="Restart level"
-          >
-            <RotateCcw className="w-4 h-4" />
-            <span>Restart</span>
-          </button>
+          {isChallenge ? (
+            <button
+              disabled
+              className="px-3.5 py-2 rounded-xl bg-slate-900/50 border border-slate-800 text-slate-500 text-xs font-semibold flex items-center gap-1.5 cursor-not-allowed opacity-75"
+              title="Restarts are not permitted in official 1-attempt challenges"
+            >
+              <Lock className="w-4 h-4 text-slate-500" />
+              <span>1 Attempt</span>
+            </button>
+          ) : (
+            <button
+              onClick={handleRestart}
+              className="px-3.5 py-2 rounded-xl bg-slate-900/80 hover:bg-slate-800 border border-slate-700/60 text-slate-300 hover:text-white text-xs font-semibold flex items-center gap-1.5 transition-all active:scale-95"
+              title="Restart level"
+            >
+              <RotateCcw className="w-4 h-4" />
+              <span>Restart</span>
+            </button>
+          )}
         </div>
       </footer>
 
@@ -513,8 +582,16 @@ export const GameScreen: React.FC<GameScreenProps> = ({ puzzle, onBack }) => {
           movesTaken={movesCount}
           isNewRecord={completedStats.isNewRecord}
           unlockedConstellation={completedStats.unlockedConstellation}
+          isChallenge={isChallenge}
+          onViewLeaderboard={() => {
+            setCompletedStats(null);
+            setCurrentScreen('leaderboards');
+          }}
           onNext={() => {
-            if (nextPuzzle) {
+            if (isChallenge) {
+              setCompletedStats(null);
+              setCurrentScreen('leaderboards');
+            } else if (nextPuzzle) {
               setCompletedStats(null);
               setElapsedSeconds(0);
               setMovesCount(0);
@@ -525,10 +602,18 @@ export const GameScreen: React.FC<GameScreenProps> = ({ puzzle, onBack }) => {
             }
           }}
           onReplay={() => {
-            handleRestart();
+            if (!isChallenge) {
+              handleRestart();
+            }
           }}
           onReturnToMap={() => {
-            setCurrentScreen('constellations');
+            if (isChallenge) {
+              setCurrentScreen(
+                puzzle.id.startsWith('daily_') ? 'daily_challenge' : 'weekly_challenge'
+              );
+            } else {
+              setCurrentScreen('constellations');
+            }
           }}
         />
       )}

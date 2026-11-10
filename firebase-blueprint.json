@@ -87,6 +87,8 @@
         "userId": { "type": "string", "maxLength": 128 },
         "displayNameSnapshot": { "type": "string", "maxLength": 50 },
         "puzzleId": { "type": "string", "maxLength": 128 },
+        "puzzleName": { "type": "string", "maxLength": 64 },
+        "difficulty": { "type": "string", "maxLength": 20 },
         "gameMode": { "type": "string", "maxLength": 32 },
         "completionTime": { "type": "number" },
         "moveCount": { "type": "number" },
@@ -95,6 +97,22 @@
         "submittedAt": { "type": "string", "format": "date-time" }
       },
       "required": ["scoreId", "userId", "displayNameSnapshot", "puzzleId", "points"]
+    },
+    "ChallengeAttempt": {
+      "title": "ChallengeAttempt",
+      "description": "Records the single allowed attempt for daily and weekly challenges",
+      "type": "object",
+      "properties": {
+        "challengeId": { "type": "string", "maxLength": 64 },
+        "challengeType": { "type": "string", "enum": ["daily", "weekly"] },
+        "completed": { "type": "boolean" },
+        "points": { "type": "number" },
+        "stars": { "type": "number" },
+        "completionTime": { "type": "number" },
+        "moveCount": { "type": "number" },
+        "attemptedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["challengeId", "challengeType", "completed", "attemptedAt"]
     },
     "Challenge": {
       "title": "Challenge",
@@ -131,6 +149,10 @@
     "/users/{userId}/progress/{puzzleId}": {
       "schema": { "$ref": "#/entities/UserProgress" },
       "description": "Per-puzzle progress and best records for user"
+    },
+    "/users/{userId}/challengeAttempts/{challengeId}": {
+      "schema": { "$ref": "#/entities/ChallengeAttempt" },
+      "description": "User challenge attempt records enforcing 1 attempt per challenge"
     },
     "/puzzles/{puzzleId}": {
       "schema": { "$ref": "#/entities/Puzzle" },

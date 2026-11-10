@@ -92,7 +92,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       }
     } catch (err: any) {
       console.error(err);
-      setErrorMsg(err.message || 'Authentication error occurred');
+      if (err.code === 'auth/operation-not-allowed') {
+        setErrorMsg('Email/Password registration is not enabled on this Firebase project. Please use Google Sign-In above.');
+      } else {
+        setErrorMsg(err.message || 'Authentication error occurred');
+      }
     } finally {
       setLoading(false);
     }

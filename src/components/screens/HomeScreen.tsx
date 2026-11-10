@@ -25,6 +25,7 @@ import {
   getWeeklyChallenge,
 } from '../../services/puzzleData';
 import { GameMode, MazeGeometry, PuzzleDefinition } from '../../types/game';
+import { hasAttemptedChallenge } from '../../services/storage';
 import { AuthModal } from '../modals/AuthModal';
 
 export const HomeScreen: React.FC = () => {
@@ -222,20 +223,30 @@ export const HomeScreen: React.FC = () => {
                 <Calendar className="w-3.5 h-3.5" />
                 Daily Labyrinth
               </span>
-              <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-bold">
-                2X Points
-              </span>
+              {hasAttemptedChallenge(getDailyChallenge().id) || !!userProgress[getDailyChallenge().id]?.completed ? (
+                <span className="px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30 text-[10px] font-bold">
+                  1/1 Attempt Used
+                </span>
+              ) : (
+                <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-bold">
+                  1 Attempt • 2X Pts
+                </span>
+              )}
             </div>
             <h3 className="text-lg font-bold text-white group-hover:text-sky-300 transition-colors">
               Today's Challenge
             </h3>
             <p className="text-xs text-slate-400 mt-1">
-              Synchronized global maze puzzle refreshed every day at 00:00 UTC.
+              Synchronized global maze puzzle refreshed every day at 00:00 UTC. Strict 1 attempt only.
             </p>
           </div>
 
           <div className="mt-4 pt-4 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-300 font-medium">
-            <span>Play Daily Challenge</span>
+            <span>
+              {hasAttemptedChallenge(getDailyChallenge().id) || !!userProgress[getDailyChallenge().id]?.completed
+                ? 'View Attempt Result'
+                : 'Play Daily Challenge'}
+            </span>
             <ChevronRight className="w-4 h-4 text-sky-400 group-hover:translate-x-1 transition-transform" />
           </div>
         </div>
@@ -251,20 +262,30 @@ export const HomeScreen: React.FC = () => {
                 <Layers className="w-3.5 h-3.5" />
                 Weekly Master
               </span>
-              <span className="px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30 text-[10px] font-bold">
-                300 Pts
-              </span>
+              {hasAttemptedChallenge(getWeeklyChallenge().id) || !!userProgress[getWeeklyChallenge().id]?.completed ? (
+                <span className="px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30 text-[10px] font-bold">
+                  1/1 Attempt Used
+                </span>
+              ) : (
+                <span className="px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30 text-[10px] font-bold">
+                  1 Attempt • 300 Pts
+                </span>
+              )}
             </div>
             <h3 className="text-lg font-bold text-white group-hover:text-purple-300 transition-colors">
               Silhouette Star Maze
             </h3>
             <p className="text-xs text-slate-400 mt-1">
-              Special geometry with dimensional teleportation portals.
+              Special geometry with dimensional teleportation portals. Single official attempt per week.
             </p>
           </div>
 
-          <div className="mt-4 pt-4 border-t border-slate-800/80 flex items-center justify-between text-xs text-purple-300 font-medium">
-            <span>Enter Weekly Labyrinth</span>
+          <div className="mt-4 pt-4 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-300 font-medium">
+            <span>
+              {hasAttemptedChallenge(getWeeklyChallenge().id) || !!userProgress[getWeeklyChallenge().id]?.completed
+                ? 'View Attempt Result'
+                : 'Play Weekly Challenge'}
+            </span>
             <ChevronRight className="w-4 h-4 text-purple-400 group-hover:translate-x-1 transition-transform" />
           </div>
         </div>

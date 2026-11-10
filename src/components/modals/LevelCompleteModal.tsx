@@ -1,5 +1,5 @@
 import React from 'react';
-import { Star, Trophy, Clock, ArrowRight, RotateCcw, Compass, Sparkles } from 'lucide-react';
+import { Star, Trophy, Clock, ArrowRight, RotateCcw, Compass, Sparkles, Calendar } from 'lucide-react';
 import { PuzzleDefinition } from '../../types/game';
 
 interface LevelCompleteModalProps {
@@ -10,9 +10,11 @@ interface LevelCompleteModalProps {
   movesTaken: number;
   isNewRecord: boolean;
   unlockedConstellation?: string;
+  isChallenge?: boolean;
   onNext: () => void;
   onReplay: () => void;
   onReturnToMap: () => void;
+  onViewLeaderboard?: () => void;
 }
 
 export const LevelCompleteModal: React.FC<LevelCompleteModalProps> = ({
@@ -23,9 +25,11 @@ export const LevelCompleteModal: React.FC<LevelCompleteModalProps> = ({
   movesTaken,
   isNewRecord,
   unlockedConstellation,
+  isChallenge = false,
   onNext,
   onReplay,
   onReturnToMap,
+  onViewLeaderboard,
 }) => {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in">
@@ -102,31 +106,55 @@ export const LevelCompleteModal: React.FC<LevelCompleteModalProps> = ({
 
         {/* Buttons */}
         <div className="w-full flex flex-col gap-2.5">
-          <button
-            onClick={onNext}
-            className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 text-white font-semibold flex items-center justify-center gap-2 shadow-lg shadow-sky-500/25 transition-all active:scale-[0.98]"
-          >
-            <span>Next Labyrinth</span>
-            <ArrowRight className="w-4 h-4" />
-          </button>
+          {isChallenge ? (
+            <>
+              <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs font-bold mb-1">
+                Official Attempt Registered (1/1 Attempt Used)
+              </div>
+              <button
+                onClick={onViewLeaderboard || onNext}
+                className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-amber-500 to-sky-500 hover:from-amber-400 hover:to-sky-400 text-white font-bold flex items-center justify-center gap-2 shadow-lg shadow-amber-500/25 transition-all active:scale-[0.98]"
+              >
+                <Trophy className="w-4 h-4 text-white" />
+                <span>View on Leaderboard</span>
+              </button>
+              <button
+                onClick={onReturnToMap}
+                className="w-full py-3 px-4 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-300 font-medium flex items-center justify-center gap-2 border border-slate-700/60 transition-all active:scale-[0.98]"
+              >
+                <Calendar className="w-4 h-4 text-sky-400" />
+                <span>Return to Challenges</span>
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={onNext}
+                className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 text-white font-semibold flex items-center justify-center gap-2 shadow-lg shadow-sky-500/25 transition-all active:scale-[0.98]"
+              >
+                <span>Next Labyrinth</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
 
-          <div className="flex gap-2">
-            <button
-              onClick={onReplay}
-              className="flex-1 py-3 px-4 rounded-xl bg-slate-800 hover:bg-slate-700/80 text-slate-300 font-medium flex items-center justify-center gap-2 border border-slate-700/60 transition-all active:scale-[0.98]"
-            >
-              <RotateCcw className="w-4 h-4" />
-              <span>Replay</span>
-            </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={onReplay}
+                  className="flex-1 py-3 px-4 rounded-xl bg-slate-800 hover:bg-slate-700/80 text-slate-300 font-medium flex items-center justify-center gap-2 border border-slate-700/60 transition-all active:scale-[0.98]"
+                >
+                  <RotateCcw className="w-4 h-4" />
+                  <span>Replay</span>
+                </button>
 
-            <button
-              onClick={onReturnToMap}
-              className="flex-1 py-3 px-4 rounded-xl bg-slate-800 hover:bg-slate-700/80 text-slate-300 font-medium flex items-center justify-center gap-2 border border-slate-700/60 transition-all active:scale-[0.98]"
-            >
-              <Compass className="w-4 h-4" />
-              <span>Constellations</span>
-            </button>
-          </div>
+                <button
+                  onClick={onReturnToMap}
+                  className="flex-1 py-3 px-4 rounded-xl bg-slate-800 hover:bg-slate-700/80 text-slate-300 font-medium flex items-center justify-center gap-2 border border-slate-700/60 transition-all active:scale-[0.98]"
+                >
+                  <Compass className="w-4 h-4" />
+                  <span>Constellations</span>
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>

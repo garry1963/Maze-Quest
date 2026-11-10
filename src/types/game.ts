@@ -170,6 +170,19 @@ export interface LeaderboardEntry {
   bestTime?: number;
   submittedAt: string;
   gameMode?: string;
+  difficulty?: Difficulty;
+  puzzleName?: string;
+}
+
+export interface ChallengeAttemptData {
+  challengeId: string;
+  challengeType: 'daily' | 'weekly';
+  completed: boolean;
+  attemptedAt: string;
+  points: number;
+  stars: number;
+  completionTime: number;
+  moveCount: number;
 }
 
 export interface Achievement {

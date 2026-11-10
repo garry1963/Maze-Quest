@@ -10,7 +10,7 @@ import {
 import { CONSTELLATIONS, INITIAL_ACHIEVEMENTS, INITIAL_LEVELS, getDailyChallenge, getWeeklyChallenge } from '../services/puzzleData';
 import { COLOR_THEMES } from '../services/colorThemes';
 import { soundManager } from '../services/audio';
-import { getLocalProgress, loadUserAllProgress, saveLocalProgress, submitLeaderboardScore, syncUserProgress, syncUserProfile } from '../services/storage';
+import { getLocalProgress, loadUserAllProgress, recordChallengeAttempt, saveLocalProgress, submitLeaderboardScore, syncUserProgress, syncUserProfile } from '../services/storage';
 import { useAuth } from './AuthContext';
 
 export type ScreenType =
@@ -205,17 +205,42 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     if (user) {
       syncUserProgress(user.uid, updatedRecord);
-      // Submit score to global leaderboard
-      submitLeaderboardScore({
-        userId: user.uid,
-        displayName: profile.displayName,
-        points: pointsEarned,
-        stars: starsAwarded,
-        puzzleId: puzzle.id,
-        gameMode: puzzle.mode,
-        completionTime: timeTaken,
-        moveCount: movesTaken,
-      });
+    }
+
+    const effectiveUserId = user ? user.uid : profile.uid;
+    const isDaily = puzzle.id.startsWith('daily_');
+    const isWeekly = puzzle.id.startsWith('weekly_');
+    const challengeCategory = isDaily ? 'daily' : isWeekly ? 'weekly' : puzzle.mode;
+
+    // Submit score to global & local leaderboard
+    submitLeaderboardScore({
+      userId: effectiveUserId,
+      displayName: profile.displayName || 'Stargazer',
+      points: pointsEarned,
+      stars: starsAwarded,
+      puzzleId: puzzle.id,
+      puzzleName: puzzle.name,
+      difficulty: puzzle.difficulty,
+      gameMode: challengeCategory,
+      completionTime: timeTaken,
+      moveCount: movesTaken,
+    });
+
+    // If Daily or Weekly challenge, record the single completed attempt
+    if (isDaily || isWeekly) {
+      recordChallengeAttempt(
+        {
+          challengeId: puzzle.id,
+          challengeType: isDaily ? 'daily' : 'weekly',
+          completed: true,
+          attemptedAt: new Date().toISOString(),
+          points: pointsEarned,
+          stars: starsAwarded,
+          completionTime: timeTaken,
+          moveCount: movesTaken,
+        },
+        user?.uid
+      );
     }
 
     // Play victory sounds

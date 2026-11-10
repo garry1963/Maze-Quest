@@ -42,6 +42,14 @@ service cloud.firestore {
         allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin()) && isValidId(userId) && isValidId(puzzleId);
         allow write: if isSignedIn() && request.auth.uid == userId && isValidId(userId) && isValidId(puzzleId);
       }
+
+      // User challenge attempts (1 attempt allowed per challenge cycle)
+      match /challengeAttempts/{challengeId} {
+        allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin()) && isValidId(userId) && isValidId(challengeId);
+        // Only allow creating once; prevent user modification or deletion to enforce 1-attempt rule
+        allow create: if isSignedIn() && request.auth.uid == userId && isValidId(userId) && isValidId(challengeId);
+        allow update, delete: if isAdmin() && isValidId(userId) && isValidId(challengeId);
+      }
     }
 
     // Puzzles (catalog)
