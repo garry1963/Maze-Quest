@@ -101,8 +101,11 @@ export const GameScreen: React.FC<GameScreenProps> = ({ puzzle, onBack }) => {
 
   const totalTokens = graph.collectibles?.length || 0;
 
+  const startTimeRef = useRef<number>(Date.now());
+
   // Reset level state on puzzle change
   useEffect(() => {
+    startTimeRef.current = Date.now();
     setElapsedSeconds(0);
     setMovesCount(0);
     setCollectedTokens(0);
@@ -112,38 +115,37 @@ export const GameScreen: React.FC<GameScreenProps> = ({ puzzle, onBack }) => {
     setCompletedStats(null);
   }, [puzzle.id]);
 
-  // Timer loop
+  // Timer loop with real-time Date.now() wall clock sync
   useEffect(() => {
     if (completedStats || isPaused || isFailed) return;
 
     const interval = setInterval(() => {
-      setElapsedSeconds((prev) => {
-        const next = prev + 1;
-        // Check Time Challenge failure
-        if (puzzle.mode === 'time_challenge' && puzzle.timeLimit) {
-          if (next >= puzzle.timeLimit) {
-            setIsFailed(true);
-            if (isChallenge) {
-              recordChallengeAttempt(
-                {
-                  challengeId: puzzle.id,
-                  challengeType: puzzle.id.startsWith('daily_') ? 'daily' : 'weekly',
-                  completed: false,
-                  attemptedAt: new Date().toISOString(),
-                  points: 0,
-                  stars: 0,
-                  completionTime: next,
-                  moveCount: movesCount,
-                },
-                profile.uid
-              );
-            }
-            soundManager.playBump();
+      const realSeconds = Math.max(1, Math.round((Date.now() - startTimeRef.current) / 1000));
+      setElapsedSeconds(realSeconds);
+
+      // Check Time Challenge failure
+      if (puzzle.mode === 'time_challenge' && puzzle.timeLimit) {
+        if (realSeconds >= puzzle.timeLimit) {
+          setIsFailed(true);
+          if (isChallenge) {
+            recordChallengeAttempt(
+              {
+                challengeId: puzzle.id,
+                challengeType: puzzle.id.startsWith('daily_') ? 'daily' : 'weekly',
+                completed: false,
+                attemptedAt: new Date().toISOString(),
+                points: 0,
+                stars: 0,
+                completionTime: realSeconds,
+                moveCount: movesCount,
+              },
+              profile.uid
+            );
           }
+          soundManager.playBump();
         }
-        return next;
-      });
-    }, 1000);
+      }
+    }, 500);
 
     return () => clearInterval(interval);
   }, [completedStats, isPaused, isFailed, puzzle, isChallenge, movesCount, profile.uid]);
@@ -178,9 +180,11 @@ export const GameScreen: React.FC<GameScreenProps> = ({ puzzle, onBack }) => {
   // Exit reached
   const handleExitReached = () => {
     if (completedStats || isFailed) return;
+    const finalElapsedSeconds = Math.max(3.0, Number(((Date.now() - startTimeRef.current) / 1000).toFixed(1)));
+    setElapsedSeconds(finalElapsedSeconds);
     const res = handleLevelComplete(
       puzzle,
-      elapsedSeconds,
+      finalElapsedSeconds,
       movesCount,
       collectedTokens,
       totalTokens
@@ -194,6 +198,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({ puzzle, onBack }) => {
   };
 
   const handleRestart = () => {
+    startTimeRef.current = Date.now();
     setElapsedSeconds(0);
     setMovesCount(0);
     setCollectedTokens(0);

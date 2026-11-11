@@ -434,8 +434,13 @@ export async function fetchLeaderboard(category = 'medium'): Promise<Leaderboard
 
   const allEntries = Array.from(combinedMap.values());
 
-  // Filter based on selected difficulty category
+  // Filter based on selected difficulty category and remove corrupted entries (< 3.0s completion time)
   const filtered = allEntries.filter((entry) => {
+    // Sanity filter: filter out corrupted test entries with physically impossible completion times (< 3.0s)
+    if (entry.bestTime !== undefined && entry.bestTime < 3.0) {
+      return false;
+    }
+
     const diff = (entry.difficulty || '').toLowerCase();
     const mode = (entry.gameMode || '').toLowerCase();
     const pId = ((entry as any).puzzleId || entry.id || '').toLowerCase();
@@ -464,12 +469,22 @@ export async function fetchLeaderboard(category = 'medium'): Promise<Leaderboard
     return true;
   });
 
-  // Sort: highest points first, then fastest completion time
+  // Sort: 1) Highest Points, 2) Fastest Completion Time, 3) Fewest Moves, 4) Earliest Submission Date
   filtered.sort((a, b) => {
     if (b.points !== a.points) {
       return b.points - a.points;
     }
-    return (a.bestTime || 999) - (b.bestTime || 999);
+    const timeA = a.bestTime ?? 9999;
+    const timeB = b.bestTime ?? 9999;
+    if (timeA !== timeB) {
+      return timeA - timeB;
+    }
+    const movesA = a.levelsCompleted ?? 9999;
+    const movesB = b.levelsCompleted ?? 9999;
+    if (movesA !== movesB) {
+      return movesA - movesB;
+    }
+    return new Date(a.submittedAt).getTime() - new Date(b.submittedAt).getTime();
   });
 
   return filtered.slice(0, 50);
