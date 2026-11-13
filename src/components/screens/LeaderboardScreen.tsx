@@ -18,6 +18,7 @@ import {
 import { useGame } from '../../context/GameContext';
 import { useAuth } from '../../context/AuthContext';
 import { fetchLeaderboard } from '../../services/storage';
+import { getDailyChallenge } from '../../services/puzzleData';
 import { LeaderboardEntry } from '../../types/game';
 
 type DifficultyCategory = 'easy' | 'medium' | 'hard' | 'expert' | 'master' | 'daily' | 'weekly';
@@ -119,6 +120,8 @@ export const LeaderboardScreen: React.FC = () => {
     setIsRefreshing(false);
   };
 
+  const todayDailyPuzzle = getDailyChallenge();
+  const todayDateStr = todayDailyPuzzle.id.replace('daily_', '');
   const activeTabMeta = CATEGORY_TABS.find((t) => t.id === category) || CATEGORY_TABS[1];
 
   const filteredEntries = entries.filter((e) =>
@@ -211,7 +214,11 @@ export const LeaderboardScreen: React.FC = () => {
                 Global
               </span>
             </div>
-            <p className="text-xs text-slate-400 mt-0.5">{activeTabMeta.sublabel}</p>
+            <p className="text-xs text-slate-400 mt-0.5">
+              {category === 'daily'
+                ? `${todayDailyPuzzle.name} • Today's Puzzle Only (Single-Attempt)`
+                : activeTabMeta.sublabel}
+            </p>
           </div>
         </div>
 
@@ -341,7 +348,9 @@ export const LeaderboardScreen: React.FC = () => {
             ) : filteredEntries.length === 0 ? (
               <tr>
                 <td colSpan={7} className="py-12 text-center text-slate-500">
-                  No scores recorded yet for {activeTabMeta.label}. Play a maze to be the first!
+                  {category === 'daily'
+                    ? `No scores recorded yet for today's Daily Maze (${todayDateStr}). Play today's puzzle to be the first!`
+                    : `No scores recorded yet for ${activeTabMeta.label}. Play a maze to be the first!`}
                 </td>
               </tr>
             ) : (

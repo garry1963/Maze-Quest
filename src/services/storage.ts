@@ -9,9 +9,11 @@ import {
   query,
   setDoc,
   updateDoc,
+  where,
 } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../firebase';
 import { ChallengeAttemptData, Difficulty, LeaderboardEntry, PuzzleDefinition, UserProfileData, UserProgressData } from '../types/game';
+import { getDailyChallenge } from './puzzleData';
 
 const LOCAL_PROGRESS_KEY = 'maze_local_progress';
 const LOCAL_PROFILE_KEY = 'maze_local_profile';
@@ -361,6 +363,7 @@ export async function submitLeaderboardScore(score: {
     levelsCompleted: score.moveCount,
     bestTime: score.completionTime,
     submittedAt: new Date().toISOString(),
+    puzzleId: score.puzzleId,
     gameMode: score.gameMode,
     difficulty: (score.difficulty || 'normal') as Difficulty,
     puzzleName: score.puzzleName || 'Labyrinth',
@@ -397,10 +400,15 @@ export async function submitLeaderboardScore(score: {
 export async function fetchLeaderboard(category = 'medium'): Promise<LeaderboardEntry[]> {
   const path = 'leaderboardScores';
   const remoteEntries: LeaderboardEntry[] = [];
+  const todayDailyId = getDailyChallenge().id;
+  const todayDateStr = todayDailyId.replace('daily_', '');
 
   try {
     const scoresRef = collection(db, path);
-    const q = query(scoresRef, limit(100));
+    const q =
+      category === 'daily'
+        ? query(scoresRef, where('puzzleId', '==', todayDailyId), limit(100))
+        : query(scoresRef, limit(100));
     const snap = await getDocs(q);
 
     snap.forEach((d) => {
@@ -414,6 +422,7 @@ export async function fetchLeaderboard(category = 'medium'): Promise<Leaderboard
         levelsCompleted: data.moveCount || 1,
         bestTime: data.completionTime,
         submittedAt: data.submittedAt || new Date().toISOString(),
+        puzzleId: data.puzzleId,
         gameMode: data.gameMode || 'classic',
         difficulty: data.difficulty as Difficulty,
         puzzleName: data.puzzleName,
@@ -443,10 +452,24 @@ export async function fetchLeaderboard(category = 'medium'): Promise<Leaderboard
 
     const diff = (entry.difficulty || '').toLowerCase();
     const mode = (entry.gameMode || '').toLowerCase();
-    const pId = ((entry as any).puzzleId || entry.id || '').toLowerCase();
+    const pId = (entry.puzzleId || entry.id || '').toLowerCase();
 
     if (category === 'daily') {
-      return mode === 'daily' || pId.includes('daily') || (entry.puzzleName || '').toLowerCase().includes('daily');
+      const isDailyEntry =
+        mode === 'daily' ||
+        pId.startsWith('daily_') ||
+        (entry.puzzleName || '').toLowerCase().includes('daily');
+      if (!isDailyEntry) return false;
+
+      // Only display scores for today's Daily Maze puzzle, no other day
+      if (entry.puzzleId) {
+        return entry.puzzleId === todayDailyId;
+      }
+      const dateMatch = (entry.puzzleName || '').match(/\d{4}-\d{2}-\d{2}/);
+      if (dateMatch) {
+        return dateMatch[0] === todayDateStr;
+      }
+      return (entry.submittedAt || '').slice(0, 10) === todayDateStr;
     }
     if (category === 'weekly') {
       return mode === 'weekly' || pId.includes('weekly') || (entry.puzzleName || '').toLowerCase().includes('weekly');

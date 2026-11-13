@@ -172,6 +172,7 @@ export interface LeaderboardEntry {
   levelsCompleted: number;
   bestTime?: number;
   submittedAt: string;
+  puzzleId?: string;
   gameMode?: string;
   difficulty?: Difficulty;
   puzzleName?: string;
